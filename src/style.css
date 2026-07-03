@@ -282,9 +282,12 @@ html, body {
 
 .blob {
   position: absolute;
+  left: 0;
+  top: 0;
   z-index: 2;
   cursor: pointer;
-  transition: top .45s cubic-bezier(.25,1.3,.45,1);
+  will-change: transform;
+  transition: transform .45s cubic-bezier(.25,1.3,.45,1);
 }
 .blob.no-trans { transition: none; }
 .bomb-icon {
