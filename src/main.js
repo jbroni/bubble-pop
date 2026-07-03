@@ -1,12 +1,12 @@
-import { TOTAL_LEVELS } from './levels.js?v=20260703175951-375f9a61';
-import { Game } from './game.js?v=20260703175951-375f9a61';
-import { renderMap } from './levelmap.js?v=20260703175951-375f9a61';
-import { loadProgress, saveProgress, mergeProgress, isLocked } from './progress.js?v=20260703175951-375f9a61';
-import { loadIdentity } from './identity.js?v=20260703175951-375f9a61';
-import { fetchCloudProgress } from './progress-sync.js?v=20260703175951-375f9a61';
-import { showLeaderboardOverlay } from './leaderboard-ui.js?v=20260703175951-375f9a61';
-import { showHowToPlayOverlay } from './howto-ui.js?v=20260703175951-375f9a61';
-import { APP_VERSION } from './version.js?v=20260703175951-375f9a61';
+import { TOTAL_LEVELS } from './levels.js?v=20260703180634-3b255d79';
+import { Game } from './game.js?v=20260703180634-3b255d79';
+import { renderMap } from './levelmap.js?v=20260703180634-3b255d79';
+import { loadProgress, saveProgress, mergeProgress, isLocked } from './progress.js?v=20260703180634-3b255d79';
+import { loadIdentity } from './identity.js?v=20260703180634-3b255d79';
+import { fetchCloudProgress } from './progress-sync.js?v=20260703180634-3b255d79';
+import { showLeaderboardOverlay } from './leaderboard-ui.js?v=20260703180634-3b255d79';
+import { showHowToPlayOverlay } from './howto-ui.js?v=20260703180634-3b255d79';
+import { APP_VERSION } from './version.js?v=20260703180634-3b255d79';
 
 const mapScreen = document.getElementById('mapScreen');
 const app = document.getElementById('app');

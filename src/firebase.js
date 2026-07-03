@@ -1,4 +1,4 @@
-import { firebaseConfig } from './firebase-config.js?v=20260703175951-375f9a61';
+import { firebaseConfig } from './firebase-config.js?v=20260703180634-3b255d79';
 
 const FIREBASE_JS_VERSION = '10.14.1';
 const cdn = (name) => `https://www.gstatic.com/firebasejs/${FIREBASE_JS_VERSION}/${name}.js`;
@@ -23,7 +23,15 @@ export async function getFirebaseAuth() {
   if (!configured()) return null;
   if (!authPromise) {
     authPromise = Promise.all([getApp(), import(cdn('firebase-auth'))])
-      .then(([app, mod]) => ({ auth: mod.getAuth(app), mod }));
+      .then(async ([app, mod]) => {
+        const auth = mod.getAuth(app);
+        // Firebase restores a persisted anonymous session from IndexedDB
+        // asynchronously; without waiting for it, a write that races ahead
+        // of restoration sees `request.auth == null` and gets silently
+        // rejected by Firestore rules even though we have a cached uid.
+        await auth.authStateReady();
+        return { auth, mod };
+      });
   }
   return authPromise;
 }
@@ -31,8 +39,8 @@ export async function getFirebaseAuth() {
 export async function getFirebaseDb() {
   if (!configured()) return null;
   if (!dbPromise) {
-    dbPromise = Promise.all([getApp(), import(cdn('firebase-firestore'))])
-      .then(([app, mod]) => ({ db: mod.getFirestore(app), mod }));
+    dbPromise = Promise.all([getApp(), getFirebaseAuth(), import(cdn('firebase-firestore'))])
+      .then(([app, , mod]) => ({ db: mod.getFirestore(app), mod }));
   }
   return dbPromise;
 }
