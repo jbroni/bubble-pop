@@ -18,6 +18,21 @@ export function saveProgress(progress) {
   try { localStorage.setItem(KEY, JSON.stringify(progress)); } catch (e) { /* ignore */ }
 }
 
+// Combines local and cloud-backed progress, taking the max of every field so
+// neither source can regress the other. Used only when pulling a best-effort
+// cloud backup down after app load.
+export function mergeProgress(local, cloud) {
+  const levels = { ...local.levels };
+  for (const n of Object.keys(cloud.levels || {})) {
+    const a = levels[n];
+    const b = cloud.levels[n];
+    levels[n] = a
+      ? { stars: Math.max(a.stars, b.stars), score: Math.max(a.score, b.score) }
+      : b;
+  }
+  return { unlocked: Math.max(local.unlocked, cloud.unlocked || 1), levels };
+}
+
 export function recordResult(levelNum, { stars, score }, totalLevels) {
   const progress = loadProgress();
   const prev = progress.levels[levelNum];

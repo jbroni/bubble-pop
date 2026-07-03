@@ -2,6 +2,7 @@ import { PAL, getLevel, TOTAL_LEVELS } from './levels.js';
 import { recordResult, loadProgress, isLocked } from './progress.js';
 import { loadIdentity, setNickname } from './identity.js';
 import { submitScore, fetchTop3 } from './leaderboard.js';
+import { syncProgressToCloud } from './progress-sync.js';
 
 function loadBestFor(levelNum) {
   const p = loadProgress();
@@ -510,6 +511,7 @@ export class Game {
     this.jingle(true);
     this.vib([20, 40, 20, 40, 40]);
     submitScore(this.levelNum, s.score); // fire-and-forget; no-op until a nickname exists
+    syncProgressToCloud(progress); // fire-and-forget; no-op until a nickname exists
   }
 
   showNickname() {
