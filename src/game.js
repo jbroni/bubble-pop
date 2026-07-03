@@ -1,10 +1,10 @@
-import { PAL, getLevel, TOTAL_LEVELS } from './levels.js?v=20260703202202-9fb6649c';
-import { recordResult, loadProgress, isLocked } from './progress.js?v=20260703202202-9fb6649c';
-import { loadIdentity, setNickname } from './identity.js?v=20260703202202-9fb6649c';
-import { submitScore } from './leaderboard.js?v=20260703202202-9fb6649c';
-import { syncProgressToCloud } from './progress-sync.js?v=20260703202202-9fb6649c';
-import { showLeaderboardOverlay, hideLeaderboardOverlay } from './leaderboard-ui.js?v=20260703202202-9fb6649c';
-import { loadSoundOn, saveSoundOn } from './sound-pref.js?v=20260703202202-9fb6649c';
+import { PAL, getLevel, TOTAL_LEVELS } from './levels.js?v=20260703203902-221d117c';
+import { recordResult, recordLoss, loadProgress, isLocked, COMEBACK_ASSIST_STREAK } from './progress.js?v=20260703203902-221d117c';
+import { loadIdentity, setNickname } from './identity.js?v=20260703203902-221d117c';
+import { submitScore } from './leaderboard.js?v=20260703203902-221d117c';
+import { syncProgressToCloud } from './progress-sync.js?v=20260703203902-221d117c';
+import { showLeaderboardOverlay, hideLeaderboardOverlay } from './leaderboard-ui.js?v=20260703203902-221d117c';
+import { loadSoundOn, saveSoundOn } from './sound-pref.js?v=20260703203902-221d117c';
 
 function loadBestFor(levelNum) {
   const p = loadProgress();
@@ -19,6 +19,7 @@ const SPECIAL_TIERS = [
   { type: 'bomb', min: 5 },
 ];
 const BLAST_RATE = { bomb: 50, rocket: 70, rainbow: 90 };
+const TARGET_COLOR_BIAS = 0.1;
 // Bodies stay dark/monochrome for every special type (colorblind-safe —
 // distinctness comes from the icon glyph, not hue).
 const SPECIAL_VISUALS = {
@@ -176,6 +177,11 @@ export class Game {
     return `${(2.6 + Math.random() * 4).toFixed(2)}s ${(Math.random() * 3).toFixed(2)}s`;
   }
   randColor() {
+    // Nudge refills toward the level's target color on color-clear levels so
+    // players aren't purely dependent on a rainbow booster to hit large
+    // target counts within a shrinking move budget.
+    const t = this.level.target;
+    if (t.type === 'color' && Math.random() < TARGET_COLOR_BIAS) return t.color;
     return Math.floor(Math.random() * this.level.numColors);
   }
 
@@ -184,6 +190,8 @@ export class Game {
     this.bonusRunId++;
     this.els.bonusSkipBtn.hidden = true;
     this.els.hint.hidden = false;
+    const best = loadBestFor(this.levelNum);
+    this.assistActive = !!(best && best.losses >= COMEBACK_ASSIST_STREAK);
     const blobs = [];
     for (let r = 0; r < this.ROWS; r++) {
       for (let c = 0; c < this.COLS; c++) {
@@ -195,10 +203,16 @@ export class Game {
         });
       }
     }
+    let toast = null;
+    if (this.assistActive) {
+      const idx = Math.floor(Math.random() * blobs.length);
+      blobs[idx].special = 'bomb';
+      toast = 'Struggling? Here’s a boost to help you clear this one!';
+    }
     this.state = {
-      blobs, particles: [], combo: null, toast: null,
+      blobs, particles: [], combo: null, toast,
       moves: this.level.moves, score: 0, cleared: 0, stars: 0,
-      phase: 'play', best: loadBestFor(this.levelNum),
+      phase: 'play', best,
     };
     this.els.winOverlay.hidden = true;
     this.els.loseOverlay.hidden = true;
@@ -206,6 +220,10 @@ export class Game {
     this.els.nicknameOverlay.hidden = true;
     this.rebuildBlobEls();
     this.render();
+    if (toast) {
+      this.updateToast();
+      setTimeout(() => { if (this.state.toast === toast) { this.state.toast = null; this.updateToast(); } }, 2400);
+    }
   }
 
   rebuildBlobEls() {
@@ -366,7 +384,7 @@ export class Game {
       setTimeout(() => { b.anim = 'none'; this.renderBlob(i); }, 420);
       return;
     }
-    const specialType = this.level.hasBombs ? specialForGroupSize(group.length) : null;
+    const specialType = (this.level.hasBombs || this.assistActive) ? specialForGroupSize(group.length) : null;
     this.pop(group, e, { spawnSpecialAt: specialType ? i : null, spawnSpecialType: specialType });
   }
 
@@ -503,7 +521,7 @@ export class Game {
       if (move.type !== 'group') {
         this.pop(move.blast, null, { blastType: move.type, gain: move.gain });
       } else {
-        const specialType = this.level.hasBombs ? specialForGroupSize(move.group.length) : null;
+        const specialType = (this.level.hasBombs || this.assistActive) ? specialForGroupSize(move.group.length) : null;
         this.pop(move.group, null, { spawnSpecialAt: specialType ? move.group[0] : null, spawnSpecialType: specialType });
       }
       this.waitUntilIdle(runId, step);
@@ -562,7 +580,7 @@ export class Game {
     const s = this.state;
     const group = move.type !== 'group' ? move.blast : move.group;
     const gain = move.type !== 'group' ? move.gain : group.length * group.length * 5;
-    const specialType = move.type === 'group' && this.level.hasBombs ? specialForGroupSize(group.length) : null;
+    const specialType = move.type === 'group' && (this.level.hasBombs || this.assistActive) ? specialForGroupSize(group.length) : null;
     const specialIdx = specialType ? group[0] : null;
     group.forEach(gi => { if (gi !== specialIdx) s.blobs[gi].popping = true; });
     if (specialIdx != null) {
@@ -830,6 +848,7 @@ export class Game {
     }
     if (s.moves <= 0) {
       s.phase = 'lose';
+      recordLoss(this.levelNum);
       this.showLose();
       this.jingle(false);
       return;
