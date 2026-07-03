@@ -1,12 +1,13 @@
-import { TOTAL_LEVELS } from './levels.js?v=20260703182154-d9b24638';
-import { Game } from './game.js?v=20260703182154-d9b24638';
-import { renderMap } from './levelmap.js?v=20260703182154-d9b24638';
-import { loadProgress, saveProgress, mergeProgress, isLocked } from './progress.js?v=20260703182154-d9b24638';
-import { loadIdentity } from './identity.js?v=20260703182154-d9b24638';
-import { fetchCloudProgress } from './progress-sync.js?v=20260703182154-d9b24638';
-import { showLeaderboardOverlay } from './leaderboard-ui.js?v=20260703182154-d9b24638';
-import { showHowToPlayOverlay } from './howto-ui.js?v=20260703182154-d9b24638';
-import { APP_VERSION } from './version.js?v=20260703182154-d9b24638';
+import { TOTAL_LEVELS } from './levels.js?v=20260703183128-3e918f3d';
+import { Game } from './game.js?v=20260703183128-3e918f3d';
+import { renderMap } from './levelmap.js?v=20260703183128-3e918f3d';
+import { loadProgress, saveProgress, mergeProgress, isLocked } from './progress.js?v=20260703183128-3e918f3d';
+import { loadIdentity } from './identity.js?v=20260703183128-3e918f3d';
+import { fetchCloudProgress } from './progress-sync.js?v=20260703183128-3e918f3d';
+import { showLeaderboardOverlay } from './leaderboard-ui.js?v=20260703183128-3e918f3d';
+import { showHowToPlayOverlay } from './howto-ui.js?v=20260703183128-3e918f3d';
+import { APP_VERSION } from './version.js?v=20260703183128-3e918f3d';
+import { loadSoundOn, saveSoundOn } from './sound-pref.js?v=20260703183128-3e918f3d';
 
 const mapScreen = document.getElementById('mapScreen');
 const app = document.getElementById('app');
@@ -14,6 +15,21 @@ const mapGrid = document.getElementById('mapGrid');
 
 document.getElementById('howToPlayBtn').onclick = () => showHowToPlayOverlay();
 document.getElementById('mapVersion').textContent = `v${APP_VERSION}`;
+
+const soundBtnMap = document.getElementById('soundBtnMap');
+function updateSoundBtnMap() {
+  const on = game ? game.soundOn : loadSoundOn();
+  soundBtnMap.textContent = on ? '🔊' : '🔇';
+  soundBtnMap.setAttribute('aria-label', on ? 'Mute sound' : 'Unmute sound');
+}
+soundBtnMap.onclick = () => {
+  if (game) {
+    game.toggleSound();
+  } else {
+    saveSoundOn(!loadSoundOn());
+  }
+  updateSoundBtnMap();
+};
 
 // Service worker: enables offline play and instant repeat loads. The cache it
 // maintains is keyed to APP_VERSION, so every deploy gets a clean slate with
@@ -31,6 +47,7 @@ if ('serviceWorker' in navigator) {
 }
 
 let game = null;
+updateSoundBtnMap();
 
 function showMap() {
   mapScreen.hidden = false;
