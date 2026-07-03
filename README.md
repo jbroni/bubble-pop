@@ -32,9 +32,14 @@ Deploy by pushing the static files as-is to GitHub Pages, Netlify, or Vercel.
 
 **Core loop**: grid of colored "blobs" (7×9 for every level currently). Tap a group of ≥2 orthogonally-adjacent same-color blobs to pop them (costs 1 move); tapping a lone blob just wiggles it (no move cost). Survivors fall via gravity, empty slots refill from the top with random colors. Each level has a move limit and an objective — either clear N of a target color, or reach a target score (`level.target.type` is `'color'` or `'score'`; the HUD's goal chip renders differently for each — see `Game.buildGoalChip()`).
 
-**Scoring**: `n² × 5` for a popped group of size n; bomb blasts score `n × 50` instead. Stars on win: moves remaining ≥28% of the level's move limit → 3★, ≥10% → 2★, else 1★.
+**Scoring**: `n² × 5` for a popped group of size n; booster blasts score `n × 50` (bomb), `n × 70` (rocket), or `n × 90` (rainbow) instead. Stars on win: moves remaining ≥28% of the level's move limit → 3★, ≥10% → 2★, else 1★.
 
-**Special blobs (bombs)**: from level 10 on (`level.hasBombs`), popping a group of ≥8 converts the tapped blob into a bomb instead of removing it (`Game.pop()`'s `spawnBombAt`). Tapping a bomb (`Game.explodeBomb()`) pops every non-popping blob in its 3×3 neighborhood regardless of color. Bombs are excluded from normal flood-fill matching (`flood()` skips `b.special`) but count as "a move is available" in `anyMoves()`.
+**Special blobs (boosters)**: from level 10 on (`level.hasBombs`), popping a big enough group converts the tapped blob into a booster instead of removing it (`Game.pop()`'s `spawnSpecialAt`/`spawnSpecialType`, chosen by `specialForGroupSize()`): 5–pop groups spawn a **bomb**, 6–7 spawn a **rocket**, 8+ spawn a **rainbow** — the more you pop at once, the better the booster.
+- **Bomb**: tapping it (`Game.explodeBomb()`) pops every non-popping blob in its 3×3 neighborhood regardless of color.
+- **Rocket**: tapping it (`Game.explodeRocket()`) clears its entire row or column. The direction is decided automatically from the shape of the group that spawned it (wider than tall → clears its row, taller than wide → clears its column) and shown via a 90°-rotated icon.
+- **Rainbow**: tapping it (`Game.explodeRainbow()`) clears every blob of whichever color currently has the most blobs on the board. The target color is computed fresh at tap time (not fixed at spawn), so it always reflects the live board.
+
+Boosters are excluded from normal flood-fill matching (`flood()` skips any `b.special`) but count as "a move is available" in `anyMoves()`. Overlapping boosters caught in another booster's blast are force-popped like a normal blob — there's no chain-reaction detonation.
 
 **Colorblind accessibility** is a hard requirement, not polish: every blob color has a distinct accessory (curls/antenna/freckles/sprout/glasses/cap) and mouth shape, not just a hue.
 
@@ -52,7 +57,7 @@ This also applies to the HUD goal chip's mini-blob, which is built dynamically p
 **Audio** is fully synthesized (Web Audio, no sound files) — `AudioContext` created lazily on first tap due to iOS autoplay restrictions, `resume()`'d if suspended. Pop tone rises in pitch across a group, wiggle is a thud, win/lose are triangle-wave jingles.
 
 **State shape** (`Game.state`, rebuilt per level in `startLevel()`):
-- `blobs[]`: fixed-size array of cell slots `{id, col, row, color, special, popping, anim, finalRow, noTrans, blink}`. Popped slots are **reused in place** for their replacement blob — DOM elements are created once per array index in `rebuildBlobEls()` and never recreated within a level, only restyled, so CSS transitions animate correctly across a pop→collapse→refill cycle.
+- `blobs[]`: fixed-size array of cell slots `{id, col, row, color, special, dir, popping, anim, finalRow, noTrans, blink}`. `dir` (`'row'|'col'`) is only meaningful when `special === 'rocket'` — it picks which line the rocket clears. Popped slots are **reused in place** for their replacement blob — DOM elements are created once per array index in `rebuildBlobEls()` and never recreated within a level, only restyled, so CSS transitions animate correctly across a pop→collapse→refill cycle.
 - Transient: `particles[]`, `combo`, `toast`.
 - Run state: `moves`, `score`, `cleared`, `stars`, `phase: 'play'|'win'|'lose'`, `busy` (input lock during cascade resolution, ~0.7–1s, on `Game.busy` not `state`).
 
