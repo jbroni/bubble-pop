@@ -28,6 +28,7 @@ export class Game {
       progressFill: document.getElementById('progressFill'),
       movesValue: document.getElementById('movesValue'),
       scoreValue: document.getElementById('scoreValue'),
+      chipBest: document.getElementById('chipBest'),
       winOverlay: document.getElementById('winOverlay'),
       winStars: document.getElementById('winStars'),
       winScore: document.getElementById('winScore'),
@@ -44,6 +45,7 @@ export class Game {
     document.getElementById('backBtn').onclick = () => this.callbacks.onBack && this.callbacks.onBack();
     document.getElementById('restartBtn').onclick = () => this.startLevel();
     document.getElementById('winMapBtn').onclick = () => this.callbacks.onBack && this.callbacks.onBack();
+    document.getElementById('winReplayBtn').onclick = () => this.startLevel();
     document.getElementById('loseMapBtn').onclick = () => this.callbacks.onBack && this.callbacks.onBack();
     document.getElementById('loseRestartBtn').onclick = () => this.startLevel();
     this.els.winNextBtn.onclick = () => {
@@ -817,6 +819,12 @@ export class Game {
     const low = s.moves <= 5 && s.phase === 'play';
     this.els.movesValue.classList.toggle('low', low);
     this.els.scoreValue.textContent = s.score.toLocaleString();
+    if (s.best) {
+      this.els.chipBest.textContent = `Best ${s.best.score.toLocaleString()}`;
+      this.els.chipBest.hidden = false;
+    } else {
+      this.els.chipBest.hidden = true;
+    }
   }
 
   showWin() {

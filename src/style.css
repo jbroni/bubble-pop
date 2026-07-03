@@ -222,6 +222,13 @@ html, body {
   color: #ff6d6d;
   animation: pulseRed .85s ease-in-out infinite;
 }
+.chip-best {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255,255,255,.55);
+  letter-spacing: .2px;
+}
+.chip-best[hidden] { display: none; }
 .mini-blob {
   width: 18px;
   height: 18px;
@@ -458,6 +465,20 @@ html, body {
   margin-top: 18px;
 }
 .overlay-btn-row .btn-pill { margin-top: 0; }
+.btn-circle {
+  width: 46px;
+  height: 46px;
+  flex: none;
+  border-radius: 50%;
+  border: 1px solid rgba(90,42,114,.25);
+  background: rgba(90,42,114,.12);
+  color: #5a2a72;
+  font-size: 19px;
+  line-height: 1;
+  cursor: pointer;
+  font-family: 'Fredoka', sans-serif;
+}
+.btn-circle:active { transform: translateY(2px); }
 .btn-pill-secondary {
   background: rgba(90,42,114,.12);
   color: #5a2a72;
