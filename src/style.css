@@ -101,6 +101,12 @@ html, body {
   gap: 12px;
   padding: 8px 16px calc(20px + env(safe-area-inset-bottom));
 }
+.map-version {
+  text-align: center;
+  font-size: 10px;
+  color: rgba(255,255,255,.3);
+  padding: 0 16px calc(8px + env(safe-area-inset-bottom));
+}
 .level-tile {
   position: relative;
   aspect-ratio: 1;
@@ -215,6 +221,7 @@ html, body {
   font-family: 'Fredoka', sans-serif;
 }
 .btn-restart:active { transform: scale(.9); }
+.btn-spacer { visibility: hidden; }
 
 .hud {
   display: flex;
@@ -559,6 +566,23 @@ html, body {
 .overlay-title-leaderboard { color: #b8760a; }
 .overlay-card-nickname { background: linear-gradient(180deg,#ffffff,#ffe7f3); }
 .overlay-title-nickname { color: #d81b77; }
+
+.overlay-card-howto {
+  background: linear-gradient(180deg,#ffffff,#eef3ff);
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.overlay-title-howto { color: #3a4fd8; }
+.howto-section {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  text-align: left;
+  margin-top: 14px;
+}
+.howto-icon { font-size: 22px; line-height: 1.3; flex: none; }
+.howto-text { font-size: 14px; line-height: 1.4; color: #5a4a7a; }
+.howto-text strong { color: #2a2050; }
 
 .leaderboard-list {
   list-style: none;
