@@ -1,5 +1,5 @@
-import { TOTAL_LEVELS } from './levels.js?v=20260703203902-221d117c';
-import { loadProgress, isLocked, STAR_GATE_SIZE, STAR_GATE_AVG } from './progress.js?v=20260703203902-221d117c';
+import { TOTAL_LEVELS } from './levels.js?v=20260703210422-9856a5ee';
+import { loadProgress, isLocked, decadeStars, STAR_GATE_SIZE, STAR_GATE_AVG } from './progress.js?v=20260703210422-9856a5ee';
 
 function formatScore(n) {
   if (n >= 1000) {
@@ -7,6 +7,16 @@ function formatScore(n) {
     return (k >= 10 ? Math.round(k) : k.toFixed(1)) + 'k';
   }
   return String(n);
+}
+
+function showLockedToast(mapScreen, message) {
+  const existing = mapScreen.querySelector('.map-toast');
+  if (existing) existing.remove();
+  const el = document.createElement('div');
+  el.className = 'toast map-toast';
+  el.textContent = message;
+  mapScreen.appendChild(el);
+  setTimeout(() => el.remove(), 3200);
 }
 
 export function renderMap(container, onSelect, onViewScores) {
@@ -22,13 +32,21 @@ export function renderMap(container, onSelect, onViewScores) {
     const btn = document.createElement('button');
     btn.className = 'level-btn' + (locked ? ' locked' : '') + (info ? ' cleared' : '');
     btn.type = 'button';
-    btn.disabled = locked;
 
+    let lockedMessage = null;
     if (locked && n <= progress.unlocked && n > STAR_GATE_SIZE) {
-      const prevDecadeStart = Math.floor((n - 1) / STAR_GATE_SIZE - 1) * STAR_GATE_SIZE + 1;
+      const prevDecadeIndex = Math.floor((n - 1) / STAR_GATE_SIZE) - 1;
+      const prevDecadeStart = prevDecadeIndex * STAR_GATE_SIZE + 1;
       const prevDecadeEnd = prevDecadeStart + STAR_GATE_SIZE - 1;
-      btn.title = `Requires ${STAR_GATE_AVG}★ average in levels ${prevDecadeStart}-${prevDecadeEnd}`;
+      const have = decadeStars(progress, prevDecadeIndex);
+      const need = STAR_GATE_SIZE * STAR_GATE_AVG;
+      lockedMessage = `Need ${need}★ from levels ${prevDecadeStart}-${prevDecadeEnd} — you have ${have}★ (${need - have} more to go)`;
+      btn.title = lockedMessage;
     }
+    // Locked tiles must stay a non-disabled button so a tap can still show
+    // showLockedToast() — a disabled button swallows the click before it
+    // would otherwise bubble/fire.
+    if (locked) btn.setAttribute('aria-disabled', 'true');
 
     const num = document.createElement('div');
     num.className = 'level-num';
@@ -52,7 +70,11 @@ export function renderMap(container, onSelect, onViewScores) {
       btn.appendChild(scoreEl);
     }
 
-    if (!locked) btn.addEventListener('click', () => onSelect(n));
+    if (!locked) {
+      btn.addEventListener('click', () => onSelect(n));
+    } else if (lockedMessage) {
+      btn.addEventListener('click', () => showLockedToast(container.parentElement, lockedMessage));
+    }
     tile.appendChild(btn);
 
     if (!locked) {
