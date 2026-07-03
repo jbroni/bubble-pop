@@ -1,9 +1,9 @@
-import { PAL, getLevel, TOTAL_LEVELS } from './levels.js?v=20260703194343-d3728a72';
-import { recordResult, loadProgress, isLocked } from './progress.js?v=20260703194343-d3728a72';
-import { loadIdentity, setNickname } from './identity.js?v=20260703194343-d3728a72';
-import { submitScore } from './leaderboard.js?v=20260703194343-d3728a72';
-import { syncProgressToCloud } from './progress-sync.js?v=20260703194343-d3728a72';
-import { showLeaderboardOverlay, hideLeaderboardOverlay } from './leaderboard-ui.js?v=20260703194343-d3728a72';
+import { PAL, getLevel, TOTAL_LEVELS } from './levels.js?v=20260703194920-f0f14189';
+import { recordResult, loadProgress, isLocked } from './progress.js?v=20260703194920-f0f14189';
+import { loadIdentity, setNickname } from './identity.js?v=20260703194920-f0f14189';
+import { submitScore } from './leaderboard.js?v=20260703194920-f0f14189';
+import { syncProgressToCloud } from './progress-sync.js?v=20260703194920-f0f14189';
+import { showLeaderboardOverlay, hideLeaderboardOverlay } from './leaderboard-ui.js?v=20260703194920-f0f14189';
 
 function loadBestFor(levelNum) {
   const p = loadProgress();
@@ -917,13 +917,26 @@ export class Game {
       }
       el._specialIcon.textContent = spec.icon;
       el._specialIcon.style.fontSize = Math.round(this.cellH * 0.62) + 'px';
-      el._specialIcon.style.transform = (b.special === 'rocket' && b.dir === 'col') ? 'rotate(90deg)' : 'none';
+      el._specialIcon.style.transform = (b.special === 'rocket' && b.dir === 'row') ? 'rotate(90deg)' : 'none';
       el._specialIcon.style.display = 'flex';
+      if (b.special === 'rocket') {
+        if (!el._rocketDirBadge) {
+          const db = document.createElement('div');
+          db.className = 'rocket-dir-badge';
+          body.appendChild(db);
+          el._rocketDirBadge = db;
+        }
+        el._rocketDirBadge.textContent = b.dir === 'row' ? '↔' : '↕';
+        el._rocketDirBadge.style.display = 'flex';
+      } else if (el._rocketDirBadge) {
+        el._rocketDirBadge.style.display = 'none';
+      }
       el._lastSpecial = true;
       return;
     }
 
     if (el._specialIcon) el._specialIcon.style.display = 'none';
+    if (el._rocketDirBadge) el._rocketDirBadge.style.display = 'none';
     el._gloss.style.display = '';
     el._accWrap.style.display = '';
     el._eyesWrap.style.display = '';
