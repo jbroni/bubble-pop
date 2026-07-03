@@ -894,6 +894,7 @@ export class Game {
         el._specialIcon = ic;
       }
       el._specialIcon.textContent = spec.icon;
+      el._specialIcon.style.fontSize = Math.round(this.cellH * 0.62) + 'px';
       el._specialIcon.style.transform = (b.special === 'rocket' && b.dir === 'col') ? 'rotate(90deg)' : 'none';
       el._specialIcon.style.display = 'flex';
       el._lastSpecial = true;

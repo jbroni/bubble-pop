@@ -336,7 +336,8 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 60%;
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,.6));
   transition: transform .2s ease;
 }
 .blob-body {
