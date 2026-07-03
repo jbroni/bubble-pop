@@ -1,5 +1,5 @@
-import { fetchTop3 } from './leaderboard.js?v=20260703212255-e226876d';
-import { loadProgress } from './progress.js?v=20260703212255-e226876d';
+import { fetchTop3 } from './leaderboard.js?v=20260703212533-bc194ddb';
+import { loadProgress } from './progress.js?v=20260703212533-bc194ddb';
 
 const els = {
   overlay: document.getElementById('leaderboardOverlay'),

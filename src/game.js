@@ -1,10 +1,10 @@
-import { PAL, getLevel, TOTAL_LEVELS } from './levels.js?v=20260703212255-e226876d';
-import { recordResult, recordLoss, loadProgress, isLocked, COMEBACK_ASSIST_STREAK } from './progress.js?v=20260703212255-e226876d';
-import { loadIdentity, setNickname } from './identity.js?v=20260703212255-e226876d';
-import { submitScore } from './leaderboard.js?v=20260703212255-e226876d';
-import { syncProgressToCloud } from './progress-sync.js?v=20260703212255-e226876d';
-import { showLeaderboardOverlay, hideLeaderboardOverlay } from './leaderboard-ui.js?v=20260703212255-e226876d';
-import { loadSoundOn, saveSoundOn } from './sound-pref.js?v=20260703212255-e226876d';
+import { PAL, getLevel, TOTAL_LEVELS } from './levels.js?v=20260703212533-bc194ddb';
+import { recordResult, recordLoss, loadProgress, isLocked, COMEBACK_ASSIST_STREAK } from './progress.js?v=20260703212533-bc194ddb';
+import { loadIdentity, setNickname } from './identity.js?v=20260703212533-bc194ddb';
+import { submitScore } from './leaderboard.js?v=20260703212533-bc194ddb';
+import { syncProgressToCloud } from './progress-sync.js?v=20260703212533-bc194ddb';
+import { showLeaderboardOverlay, hideLeaderboardOverlay } from './leaderboard-ui.js?v=20260703212533-bc194ddb';
+import { loadSoundOn, saveSoundOn } from './sound-pref.js?v=20260703212533-bc194ddb';
 
 function loadBestFor(levelNum) {
   const p = loadProgress();

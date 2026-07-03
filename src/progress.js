@@ -69,7 +69,7 @@ export function recordLoss(levelNum) {
 // STAR_GATE_AVG stars across the whole preceding block (unplayed levels
 // count as 0 stars).
 export const STAR_GATE_SIZE = 10;
-export const STAR_GATE_AVG = 2.5;
+export const STAR_GATE_AVG = 2;
 
 // decadeIndex is 0-based: decade 0 covers levels 1-10, decade 1 covers 11-20, etc.
 export function decadeStars(progress, decadeIndex) {
