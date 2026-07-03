@@ -1,6 +1,12 @@
 #!/bin/sh
 # Auto-stamps src/version.js with a unique build identifier on every commit,
 # so the deployed app can always be traced back to the commit it came from.
+# Also stamps that same identifier as a `?v=` query string onto every local
+# asset reference (index.html's stylesheet/entry-script, and every relative
+# `from '...'` import between src/*.js modules) so that a new deploy is
+# reachable via brand-new URLs no browser/CDN could have cached before —
+# this is what actually invalidates client caches on deploy, since GitHub
+# Pages doesn't let us set our own Cache-Control headers.
 # Enabled via `git config core.hooksPath .githooks` (one-time, per clone).
 
 parent_sha=$(git rev-parse --short=8 HEAD 2>/dev/null || echo '0000000')
@@ -11,4 +17,11 @@ cat > src/version.js <<EOF
 export const APP_VERSION = '${version}';
 EOF
 
-git add src/version.js
+perl -pi -e "s/(href=\"src\/style\.css)(\?v=[^\"]*)?\"/\$1?v=${version}\"/" index.html
+perl -pi -e "s/(src=\"src\/main\.js)(\?v=[^\"]*)?\"/\$1?v=${version}\"/" index.html
+
+for f in src/*.js; do
+  perl -pi -e "s/(from\s+'\.\/[A-Za-z0-9_-]+\.js)(\?v=[^']*)?'/\$1?v=${version}'/g" "$f"
+done
+
+git add src/version.js index.html src/*.js

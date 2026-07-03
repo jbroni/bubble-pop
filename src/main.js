@@ -1,12 +1,12 @@
-import { TOTAL_LEVELS } from './levels.js';
-import { Game } from './game.js';
-import { renderMap } from './levelmap.js';
-import { loadProgress, saveProgress, mergeProgress, isLocked } from './progress.js';
-import { loadIdentity } from './identity.js';
-import { fetchCloudProgress } from './progress-sync.js';
-import { showLeaderboardOverlay } from './leaderboard-ui.js';
-import { showHowToPlayOverlay } from './howto-ui.js';
-import { APP_VERSION } from './version.js';
+import { TOTAL_LEVELS } from './levels.js?v=20260703175951-375f9a61';
+import { Game } from './game.js?v=20260703175951-375f9a61';
+import { renderMap } from './levelmap.js?v=20260703175951-375f9a61';
+import { loadProgress, saveProgress, mergeProgress, isLocked } from './progress.js?v=20260703175951-375f9a61';
+import { loadIdentity } from './identity.js?v=20260703175951-375f9a61';
+import { fetchCloudProgress } from './progress-sync.js?v=20260703175951-375f9a61';
+import { showLeaderboardOverlay } from './leaderboard-ui.js?v=20260703175951-375f9a61';
+import { showHowToPlayOverlay } from './howto-ui.js?v=20260703175951-375f9a61';
+import { APP_VERSION } from './version.js?v=20260703175951-375f9a61';
 
 const mapScreen = document.getElementById('mapScreen');
 const app = document.getElementById('app');
