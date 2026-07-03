@@ -15,13 +15,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="src/style.css?v=20260703182154-d9b24638">
+<link rel="stylesheet" href="src/style.css?v=20260703183128-3e918f3d">
 </head>
 <body>
 
 <div id="mapScreen" data-screen-label="Level map">
   <div class="header">
-    <div class="btn-restart btn-spacer" aria-hidden="true"></div>
+    <button id="soundBtnMap" class="btn-restart" aria-label="Toggle sound" type="button">🔊</button>
     <div class="title">Bubble <span class="title-pop">Pop</span></div>
     <button id="howToPlayBtn" class="btn-restart" aria-label="How to play" type="button">?</button>
   </div>
@@ -33,9 +33,15 @@
 <div id="app" data-screen-label="Bubble Pop — Game" hidden>
 
   <div class="header">
-    <button id="backBtn" class="btn-restart" aria-label="Back to levels" type="button">←</button>
+    <div class="header-group">
+      <button id="backBtn" class="btn-restart" aria-label="Back to levels" type="button">←</button>
+      <button id="soundBtnGame" class="btn-restart" aria-label="Toggle sound" type="button">🔊</button>
+    </div>
     <div class="title" id="levelTitle">Level 1</div>
-    <button id="restartBtn" class="btn-restart" aria-label="Restart level" type="button">↻</button>
+    <div class="header-group">
+      <div class="btn-restart btn-spacer" aria-hidden="true"></div>
+      <button id="restartBtn" class="btn-restart" aria-label="Restart level" type="button">↻</button>
+    </div>
   </div>
 
   <div class="hud">
@@ -153,6 +159,6 @@
   </div>
 </div>
 
-<script type="module" src="src/main.js?v=20260703182154-d9b24638"></script>
+<script type="module" src="src/main.js?v=20260703183128-3e918f3d"></script>
 </body>
 </html>

@@ -26,6 +26,7 @@ const PRECACHE_URLS = [
   './src/version.js',
   './src/firebase-config.js',
   './src/firebase.js',
+  './src/sound-pref.js',
 ];
 
 const GOOGLE_FONTS_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];
