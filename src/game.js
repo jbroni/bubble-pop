@@ -12,6 +12,7 @@ export class Game {
     this.uid = 1;
     this.pid = 1;
     this.busy = false;
+    this.bonusRunId = 0;
     this.ctx = null;
     this.soundOn = true;
 
@@ -35,8 +36,11 @@ export class Game {
       loseOverlay: document.getElementById('loseOverlay'),
       loseSub: document.getElementById('loseSub'),
       loseScore: document.getElementById('loseScore'),
+      hint: document.getElementById('hint'),
+      bonusSkipBtn: document.getElementById('bonusSkipBtn'),
     };
 
+    this.els.bonusSkipBtn.onclick = () => this.skipBonusRound();
     document.getElementById('backBtn').onclick = () => this.callbacks.onBack && this.callbacks.onBack();
     document.getElementById('restartBtn').onclick = () => this.startLevel();
     document.getElementById('winMapBtn').onclick = () => this.callbacks.onBack && this.callbacks.onBack();
@@ -83,6 +87,21 @@ export class Game {
         node.style.background = pal.c2;
         this.els.miniBlob.appendChild(node);
       });
+      const eyes = document.createElement('div');
+      eyes.className = 'blob-eyes';
+      for (let k = 0; k < 2; k++) {
+        const eye = document.createElement('div');
+        eye.className = 'eye' + (t.color === 4 ? ' ring' : '');
+        const pupil = document.createElement('div');
+        pupil.className = 'pupil';
+        eye.appendChild(pupil);
+        eyes.appendChild(eye);
+      }
+      this.els.miniBlob.appendChild(eyes);
+      const mouthWrap = document.createElement('div');
+      mouthWrap.className = 'mouth-wrap';
+      mouthWrap.appendChild(this.mouthNode(t.color));
+      this.els.miniBlob.appendChild(mouthWrap);
     } else {
       this.els.targetLabel.textContent = 'SCORE GOAL';
       this.els.miniBlob.hidden = true;
@@ -111,6 +130,9 @@ export class Game {
 
   startLevel() {
     this.busy = false;
+    this.bonusRunId++;
+    this.els.bonusSkipBtn.hidden = true;
+    this.els.hint.hidden = false;
     const blobs = [];
     for (let r = 0; r < this.ROWS; r++) {
       for (let c = 0; c < this.COLS; c++) {
@@ -283,14 +305,177 @@ export class Game {
   }
 
   explodeBomb(i, e) {
+    const blast = this.computeBombBlast(i);
+    this.vib([15, 15, 15, 15, 30]);
+    this.pop(blast, e, { isBombBlast: true });
+  }
+
+  computeBombBlast(i) {
     const b = this.state.blobs[i];
     const blast = [];
     this.state.blobs.forEach((ob, gi) => {
       if (ob.popping || ob.finalRow != null) return;
       if (Math.max(Math.abs(ob.col - b.col), Math.abs(ob.row - b.row)) <= 1) blast.push(gi);
     });
-    this.vib([15, 15, 15, 15, 30]);
-    this.pop(blast, e, { isBombBlast: true });
+    return blast;
+  }
+
+  bestGroup() {
+    const blobs = this.state.blobs;
+    const seen = new Set();
+    let best = null;
+    for (let i = 0; i < blobs.length; i++) {
+      const b = blobs[i];
+      if (b.popping || b.special || b.finalRow != null || seen.has(i)) continue;
+      const group = this.flood(i);
+      group.forEach(gi => seen.add(gi));
+      if (group.length >= 2 && (!best || group.length > best.length)) best = group;
+    }
+    return best;
+  }
+
+  findBestMove() {
+    const blobs = this.state.blobs;
+    let bestBomb = null, bestBombGain = -1;
+    blobs.forEach((b, i) => {
+      if (b.special !== 'bomb') return;
+      const blast = this.computeBombBlast(i);
+      const gain = blast.length * 50;
+      if (gain > bestBombGain) { bestBombGain = gain; bestBomb = blast; }
+    });
+    const group = this.bestGroup();
+    const groupGain = group ? group.length * group.length * 5 : -1;
+    if (bestBomb && bestBombGain >= groupGain) return { type: 'bomb', blast: bestBomb };
+    if (group) return { type: 'group', group };
+    return null;
+  }
+
+  runBonusRound(stars) {
+    const s = this.state;
+    const runId = ++this.bonusRunId;
+    this.bonusStars = stars;
+    s.toast = 'Bonus round! Cashing in leftover moves…';
+    this.updateToast();
+    this.els.hint.hidden = true;
+    this.els.bonusSkipBtn.hidden = false;
+
+    const step = () => {
+      if (this.bonusRunId !== runId) return;
+      if (s.moves <= 0) { this.endBonusRound(stars, runId); return; }
+      const move = this.findBestMove();
+      if (!move) { this.endBonusRound(stars, runId); return; }
+      if (move.type === 'bomb') {
+        this.pop(move.blast, null, { isBombBlast: true });
+      } else {
+        const spawnBombAt = (this.level.hasBombs && move.group.length >= 8) ? move.group[0] : null;
+        this.pop(move.group, null, { spawnBombAt });
+      }
+      this.waitUntilIdle(runId, step);
+    };
+    step();
+  }
+
+  waitUntilIdle(runId, cb) {
+    const poll = () => {
+      if (this.bonusRunId !== runId) return;
+      if (!this.busy) cb(); else setTimeout(poll, 12);
+    };
+    setTimeout(poll, 12);
+  }
+
+  endBonusRound(stars, runId) {
+    if (this.bonusRunId !== runId) return;
+    const s = this.state;
+    s.toast = null;
+    this.updateToast();
+    this.els.bonusSkipBtn.hidden = true;
+    this.els.hint.hidden = false;
+    this.finishWin(stars);
+  }
+
+  // Instantly resolves the rest of a bonus round with no animation: settles
+  // whatever is mid-flight, then tallies every remaining move's score directly.
+  skipBonusRound() {
+    const s = this.state;
+    if (s.phase !== 'bonus') return;
+    this.bonusRunId++; // cancels the animated step()/waitUntilIdle loop
+    const stars = this.bonusStars;
+
+    s.blobs.forEach(b => {
+      if (b.finalRow != null) { b.row = b.finalRow; b.finalRow = null; b.noTrans = false; }
+    });
+    this.collapseInstant();
+
+    while (s.moves > 0) {
+      const move = this.findBestMove();
+      if (!move) break;
+      this.applyMoveInstant(move);
+      this.collapseInstant();
+    }
+
+    this.busy = false;
+    s.toast = null;
+    this.updateToast();
+    this.els.bonusSkipBtn.hidden = true;
+    this.els.hint.hidden = false;
+    this.render();
+    this.finishWin(stars);
+  }
+
+  applyMoveInstant(move) {
+    const s = this.state;
+    const group = move.type === 'bomb' ? move.blast : move.group;
+    const gain = move.type === 'bomb' ? group.length * 50 : group.length * group.length * 5;
+    const bombIdx = (move.type === 'group' && this.level.hasBombs && group.length >= 8) ? group[0] : null;
+    group.forEach(gi => { if (gi !== bombIdx) s.blobs[gi].popping = true; });
+    if (bombIdx != null) s.blobs[bombIdx].special = 'bomb';
+    const t = this.level.target;
+    if (t.type === 'color') {
+      const clearedAdd = group.filter(gi => gi !== bombIdx && s.blobs[gi].color === t.color).length;
+      s.cleared = Math.min(t.count, s.cleared + clearedAdd);
+    }
+    s.moves -= 1;
+    s.score += gain;
+  }
+
+  // Same column-collapse math as collapse(), applied synchronously with no
+  // animation/timers — used to settle the board during an instant skip.
+  collapseInstant() {
+    const blobs = this.state.blobs;
+    for (let c = 0; c < this.COLS; c++) {
+      const colB = blobs.filter(b => b.col === c);
+      const surv = colB.filter(b => !b.popping).sort((a, b) => a.row - b.row);
+      const dead = colB.filter(b => b.popping);
+      let r = this.ROWS - 1;
+      for (let k = surv.length - 1; k >= 0; k--) surv[k].row = r--;
+      dead.forEach((b, k) => {
+        b.color = this.randColor();
+        b.special = null;
+        b.popping = false;
+        b.row = r - k;
+        b.finalRow = null;
+        b.noTrans = true;
+        b.anim = 'none';
+      });
+    }
+  }
+
+  finishWin(stars) {
+    const s = this.state;
+    const progress = recordResult(this.levelNum, { stars, score: s.score }, TOTAL_LEVELS);
+    s.stars = stars;
+    s.best = progress.levels[this.levelNum];
+    s.phase = 'win';
+    this.showWin();
+    this.jingle(true);
+    this.vib([20, 40, 20, 40, 40]);
+  }
+
+  // Bonus-round auto-pops reuse the normal pop()/collapse() animation path,
+  // just heavily sped up (stagger/settle timings scaled way down) so cashing
+  // in leftover moves doesn't make the player wait through full-speed juice.
+  scaleMs(ms) {
+    return this.state.phase === 'bonus' ? Math.max(16, Math.round(ms * 0.18)) : ms;
   }
 
   pop(group, e, opts) {
@@ -301,6 +486,10 @@ export class Game {
     const bombIdx = opts.spawnBombAt != null ? opts.spawnBombAt : null;
     const newParts = [];
     const boardRect = this.board.getBoundingClientRect();
+    const stagger = this.scaleMs(45);
+    const popDur = this.scaleMs(300);
+    const bombDur = this.scaleMs(500);
+    const bombDelay = this.scaleMs(200);
 
     group.forEach((gi, k) => {
       if (gi === bombIdx) return; // this slot becomes a bomb instead of popping
@@ -314,17 +503,17 @@ export class Game {
         newParts.push({
           id: this.pid++, l: +c.x.toFixed(2), t: +c.y.toFixed(2),
           s: Math.round(5 + Math.random() * 7), c: j % 2 ? pal.c1 : pal.hi,
-          dx: Math.round(Math.cos(a) * d), dy: Math.round(Math.sin(a) * d - 25), d: k * 45,
+          dx: Math.round(Math.cos(a) * d), dy: Math.round(Math.sin(a) * d - 25), d: k * stagger,
         });
       }
       b.popping = true;
-      b.anim = `popOut .3s ${k * 45}ms cubic-bezier(.34,1.2,.64,1) forwards`;
+      b.anim = `popOut ${popDur}ms ${k * stagger}ms cubic-bezier(.34,1.2,.64,1) forwards`;
     });
 
     if (bombIdx != null) {
       const bb = this.state.blobs[bombIdx];
       bb.special = 'bomb';
-      bb.anim = 'bombSpawn .5s 200ms cubic-bezier(.34,1.56,.64,1) backwards';
+      bb.anim = `bombSpawn ${bombDur}ms ${bombDelay}ms cubic-bezier(.34,1.56,.64,1) backwards`;
     }
 
     let combo = null;
@@ -361,7 +550,7 @@ export class Game {
     setTimeout(() => {
       this.state.particles = this.state.particles.filter(p => !ids.has(p.id));
       this.cleanupParticles(ids);
-    }, n * 45 + 900);
+    }, n * stagger + this.scaleMs(900));
 
     if (combo) {
       setTimeout(() => {
@@ -369,10 +558,10 @@ export class Game {
           this.state.combo = null;
           this.updateCombo();
         }
-      }, 950);
+      }, this.scaleMs(950));
     }
 
-    setTimeout(() => this.collapse(), n * 45 + 270);
+    setTimeout(() => this.collapse(), n * stagger + this.scaleMs(270));
   }
 
   collapse() {
@@ -408,8 +597,8 @@ export class Game {
       setTimeout(() => {
         this.busy = false;
         this.checkEnd();
-      }, 480);
-    }, 50);
+      }, this.scaleMs(480));
+    }, this.scaleMs(50));
   }
 
   anyMoves() {
@@ -432,13 +621,12 @@ export class Game {
     const goalMet = t.type === 'color' ? s.cleared >= t.count : s.score >= t.count;
     if (goalMet) {
       const stars = s.moves >= Math.ceil(this.level.moves * 0.28) ? 3 : (s.moves >= Math.ceil(this.level.moves * 0.1) ? 2 : 1);
-      const progress = recordResult(this.levelNum, { stars, score: s.score }, TOTAL_LEVELS);
-      s.phase = 'win';
-      s.stars = stars;
-      s.best = progress.levels[this.levelNum];
-      this.showWin();
-      this.jingle(true);
-      this.vib([20, 40, 20, 40, 40]);
+      if (s.moves > 0 && this.findBestMove()) {
+        s.phase = 'bonus';
+        this.runBonusRound(stars);
+      } else {
+        this.finishWin(stars);
+      }
       return;
     }
     if (s.moves <= 0) {
@@ -521,6 +709,7 @@ export class Game {
     el.style.width = CW.toFixed(3) + '%';
     el.style.height = CH.toFixed(3) + '%';
     el.classList.toggle('no-trans', !!b.noTrans);
+    el.style.transitionDuration = this.state.phase === 'bonus' ? this.scaleMs(450) + 'ms' : '';
 
     const body = el._body;
     body.style.animation = b.anim || 'none';

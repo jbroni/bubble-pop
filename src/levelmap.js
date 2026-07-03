@@ -1,6 +1,14 @@
 import { TOTAL_LEVELS } from './levels.js';
 import { loadProgress } from './progress.js';
 
+function formatScore(n) {
+  if (n >= 1000) {
+    const k = n / 1000;
+    return (k >= 10 ? Math.round(k) : k.toFixed(1)) + 'k';
+  }
+  return String(n);
+}
+
 export function renderMap(container, onSelect) {
   const progress = loadProgress();
   container.innerHTML = '';
@@ -27,6 +35,13 @@ export function renderMap(container, onSelect) {
       starsWrap.appendChild(s);
     }
     btn.appendChild(starsWrap);
+
+    if (info) {
+      const scoreEl = document.createElement('div');
+      scoreEl.className = 'level-score';
+      scoreEl.textContent = formatScore(info.score);
+      btn.appendChild(scoreEl);
+    }
 
     if (!locked) btn.addEventListener('click', () => onSelect(n));
     container.appendChild(btn);
