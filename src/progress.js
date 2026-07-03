@@ -27,7 +27,7 @@ export function mergeProgress(local, cloud) {
     const a = levels[n];
     const b = cloud.levels[n];
     levels[n] = a
-      ? { stars: Math.max(a.stars, b.stars), score: Math.max(a.score, b.score) }
+      ? { stars: Math.max(a.stars, b.stars), score: Math.max(a.score, b.score), losses: Math.max(a.losses || 0, b.losses || 0) }
       : b;
   }
   return { unlocked: Math.max(local.unlocked, cloud.unlocked || 1), levels };
@@ -39,10 +39,27 @@ export function recordResult(levelNum, { stars, score }, totalLevels) {
   progress.levels[levelNum] = {
     stars: Math.max(stars, prev ? prev.stars : 0),
     score: Math.max(score, prev ? prev.score : 0),
+    losses: 0,
   };
   if (stars > 0) {
     progress.unlocked = Math.max(progress.unlocked, Math.min(totalLevels, levelNum + 1));
   }
+  saveProgress(progress);
+  return progress;
+}
+
+// Consecutive losses on the same level (without an intervening win) before
+// the next attempt gets a comeback-assist booster — see game.js startLevel().
+export const COMEBACK_ASSIST_STREAK = 3;
+
+export function recordLoss(levelNum) {
+  const progress = loadProgress();
+  const prev = progress.levels[levelNum];
+  progress.levels[levelNum] = {
+    stars: prev ? prev.stars : 0,
+    score: prev ? prev.score : 0,
+    losses: (prev && prev.losses ? prev.losses : 0) + 1,
+  };
   saveProgress(progress);
   return progress;
 }

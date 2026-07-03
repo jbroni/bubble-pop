@@ -1,5 +1,5 @@
-import { getFirebaseDb } from './firebase.js?v=20260703202202-9fb6649c';
-import { loadIdentity } from './identity.js?v=20260703202202-9fb6649c';
+import { getFirebaseDb } from './firebase.js?v=20260703203902-221d117c';
+import { loadIdentity } from './identity.js?v=20260703203902-221d117c';
 
 // Fire-and-forget: submits `score` for `levelNum` under the current identity's
 // uid, only if it beats the existing stored score (server-enforced too, via
