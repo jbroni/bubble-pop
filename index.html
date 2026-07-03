@@ -14,10 +14,13 @@
 
 <div id="mapScreen" data-screen-label="Level map">
   <div class="header">
+    <div class="btn-restart btn-spacer" aria-hidden="true"></div>
     <div class="title">Bubble <span class="title-pop">Pop</span></div>
+    <button id="howToPlayBtn" class="btn-restart" aria-label="How to play" type="button">?</button>
   </div>
   <div class="map-sub">Tap a level to play</div>
   <div class="map-grid" id="mapGrid"></div>
+  <div class="map-version" id="mapVersion"></div>
 </div>
 
 <div id="app" data-screen-label="Bubble Pop — Game" hidden>
@@ -106,6 +109,39 @@
     <ol class="leaderboard-list" id="leaderboardList"></ol>
     <div class="overlay-btn-row">
       <button class="btn-pill btn-pill-secondary" id="leaderboardCloseBtn" type="button">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="howToPlayOverlay" data-screen-label="How to play overlay" hidden>
+  <div class="overlay-card overlay-card-howto">
+    <div class="overlay-title overlay-title-howto">How to play</div>
+    <div class="howto-section">
+      <div class="howto-icon">👆</div>
+      <div class="howto-text"><strong>Goal.</strong> Tap a group of 2 or more touching same-color blobs to pop them (costs 1 move). Tapping a lone blob just wiggles it — free. Clear the target color or hit the target score before you run out of moves.</div>
+    </div>
+    <div class="howto-section">
+      <div class="howto-icon">⭐</div>
+      <div class="howto-text"><strong>Scoring.</strong> Popping a group of size n scores n² × 5 points. Bigger groups score way more than the same blobs popped separately.</div>
+    </div>
+    <div class="howto-section">
+      <div class="howto-icon">🧨</div>
+      <div class="howto-text"><strong>Bomb.</strong> Pop 5 blobs at once to create one — tap it to blast every blob in its 3×3 neighborhood, any color (n × 50 points).</div>
+    </div>
+    <div class="howto-section">
+      <div class="howto-icon">🚀</div>
+      <div class="howto-text"><strong>Rocket.</strong> Pop 6–7 blobs at once to create one — tap it to clear its whole row or column (n × 70 points).</div>
+    </div>
+    <div class="howto-section">
+      <div class="howto-icon">🌈</div>
+      <div class="howto-text"><strong>Rainbow.</strong> Pop 8+ blobs at once to create one — tap it to clear every blob of the board's most common color (n × 90 points).</div>
+    </div>
+    <div class="howto-section">
+      <div class="howto-icon">🏆</div>
+      <div class="howto-text"><strong>Stars.</strong> Clear a level with 28% or more of your moves left for 3★, 10% or more for 2★, otherwise 1★.</div>
+    </div>
+    <div class="overlay-btn-row">
+      <button class="btn-pill btn-pill-secondary" id="howToPlayCloseBtn" type="button">Got it</button>
     </div>
   </div>
 </div>

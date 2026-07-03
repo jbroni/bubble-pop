@@ -5,10 +5,15 @@ import { loadProgress, saveProgress, mergeProgress, isLocked } from './progress.
 import { loadIdentity } from './identity.js';
 import { fetchCloudProgress } from './progress-sync.js';
 import { showLeaderboardOverlay } from './leaderboard-ui.js';
+import { showHowToPlayOverlay } from './howto-ui.js';
+import { APP_VERSION } from './version.js';
 
 const mapScreen = document.getElementById('mapScreen');
 const app = document.getElementById('app');
 const mapGrid = document.getElementById('mapGrid');
+
+document.getElementById('howToPlayBtn').onclick = () => showHowToPlayOverlay();
+document.getElementById('mapVersion').textContent = `v${APP_VERSION}`;
 
 let game = null;
 

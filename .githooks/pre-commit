@@ -1,0 +1,14 @@
+#!/bin/sh
+# Auto-stamps src/version.js with a unique build identifier on every commit,
+# so the deployed app can always be traced back to the commit it came from.
+# Enabled via `git config core.hooksPath .githooks` (one-time, per clone).
+
+parent_sha=$(git rev-parse --short=8 HEAD 2>/dev/null || echo '0000000')
+stamp=$(date -u +%Y%m%d%H%M%S)
+version="${stamp}-${parent_sha}"
+
+cat > src/version.js <<EOF
+export const APP_VERSION = '${version}';
+EOF
+
+git add src/version.js
