@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Bubble Pop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+
+<div id="mapScreen" data-screen-label="Level map">
+  <div class="header">
+    <div class="title">Bubble <span class="title-pop">Pop</span></div>
+  </div>
+  <div class="map-sub">Tap a level to play</div>
+  <div class="map-grid" id="mapGrid"></div>
+</div>
+
+<div id="app" data-screen-label="Bubble Pop — Game" hidden>
+
+  <div class="header">
+    <button id="backBtn" class="btn-restart" aria-label="Back to levels" type="button">←</button>
+    <div class="title" id="levelTitle">Level 1</div>
+    <button id="restartBtn" class="btn-restart" aria-label="Restart level" type="button">↻</button>
+  </div>
+
+  <div class="hud">
+    <div class="chip chip-goal">
+      <div class="chip-label" id="targetLabel">CLEAR</div>
+      <div class="chip-row">
+        <div class="mini-blob" id="miniBlob"></div>
+        <div class="chip-value" id="clearedValue">0/25</div>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+    <div class="chip chip-moves">
+      <div class="chip-label">MOVES</div>
+      <div class="chip-value" id="movesValue">22</div>
+    </div>
+    <div class="chip chip-score">
+      <div class="chip-label">SCORE</div>
+      <div class="chip-value" id="scoreValue">0</div>
+    </div>
+  </div>
+
+  <div class="board-wrap" id="boardWrap">
+    <div class="board" id="board">
+      <!-- blobs, particles, combo text, toast injected by JS -->
+    </div>
+  </div>
+
+  <div class="hint" id="hint">Tap groups of 2 or more matching blobs</div>
+
+  <div class="overlay" id="winOverlay" data-screen-label="Win overlay" hidden>
+    <div class="overlay-card overlay-card-win">
+      <div class="overlay-title overlay-title-win">Level clear!</div>
+      <div class="stars" id="winStars"></div>
+      <div class="overlay-score" id="winScore">Score 0</div>
+      <div class="overlay-best" id="winBest" hidden></div>
+      <div class="overlay-btn-row">
+        <button class="btn-pill btn-pill-secondary" id="winMapBtn" type="button">Levels</button>
+        <button class="btn-pill btn-pill-win" id="winNextBtn" type="button">Next level</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="loseOverlay" data-screen-label="Lose overlay" hidden>
+    <div class="overlay-card overlay-card-lose">
+      <div class="overlay-title overlay-title-lose">Out of moves!</div>
+      <div class="overlay-sub" id="loseSub">You cleared 0 of 25 pink blobs</div>
+      <div class="overlay-score" id="loseScore">Score 0</div>
+      <div class="overlay-btn-row">
+        <button class="btn-pill btn-pill-secondary" id="loseMapBtn" type="button">Levels</button>
+        <button class="btn-pill btn-pill-lose" id="loseRestartBtn" type="button">Try again</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
