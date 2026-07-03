@@ -9,6 +9,27 @@ function loadBestFor(levelNum) {
   return p.levels[levelNum] || null;
 }
 
+// Booster tiers: bigger pops spawn stronger specials. Checked highest-min first
+// so a single threshold walk picks the right tier for a given group size.
+const SPECIAL_TIERS = [
+  { type: 'rainbow', min: 8 },
+  { type: 'rocket', min: 6 },
+  { type: 'bomb', min: 5 },
+];
+const BLAST_RATE = { bomb: 50, rocket: 70, rainbow: 90 };
+// Bodies stay dark/monochrome for every special type (colorblind-safe —
+// distinctness comes from the icon glyph, not hue).
+const SPECIAL_VISUALS = {
+  bomb: { gradient: 'radial-gradient(circle at 33% 28%, #6b6b7a 0%, #33333f 55%, #131318 100%)', icon: '💣' },
+  rocket: { gradient: 'radial-gradient(circle at 33% 28%, #8fa8c9 0%, #4a5f80 55%, #2a3a52 100%)', icon: '🚀' },
+  rainbow: { gradient: 'radial-gradient(circle at 33% 28%, #6a6a72 0%, #2a2a30 55%, #0a0a0e 100%)', icon: '🌈' },
+};
+
+function specialForGroupSize(n) {
+  for (const tier of SPECIAL_TIERS) if (n >= tier.min) return tier.type;
+  return null;
+}
+
 export class Game {
   constructor(levelNum, callbacks) {
     this.callbacks = callbacks || {};
@@ -167,7 +188,7 @@ export class Game {
     for (let r = 0; r < this.ROWS; r++) {
       for (let c = 0; c < this.COLS; c++) {
         blobs.push({
-          id: this.uid++, col: c, row: r, color: this.randColor(), special: null,
+          id: this.uid++, col: c, row: r, color: this.randColor(), special: null, dir: null,
           popping: false, noTrans: false, finalRow: null,
           anim: `dropIn .6s ${(this.ROWS - r) * 45 + c * 18}ms cubic-bezier(.3,.9,.4,1) backwards`,
           blink: this.blinkStr(),
@@ -327,6 +348,14 @@ export class Game {
       this.explodeBomb(i, e);
       return;
     }
+    if (b.special === 'rocket') {
+      this.explodeRocket(i, e);
+      return;
+    }
+    if (b.special === 'rainbow') {
+      this.explodeRainbow(i, e);
+      return;
+    }
 
     const group = this.flood(i);
     if (group.length < 2) {
@@ -337,14 +366,14 @@ export class Game {
       setTimeout(() => { b.anim = 'none'; this.renderBlob(i); }, 420);
       return;
     }
-    const spawnBombAt = (this.level.hasBombs && group.length >= 8) ? i : null;
-    this.pop(group, e, { spawnBombAt });
+    const specialType = this.level.hasBombs ? specialForGroupSize(group.length) : null;
+    this.pop(group, e, { spawnSpecialAt: specialType ? i : null, spawnSpecialType: specialType });
   }
 
   explodeBomb(i, e) {
     const blast = this.computeBombBlast(i);
     this.vib([15, 15, 15, 15, 30]);
-    this.pop(blast, e, { isBombBlast: true });
+    this.pop(blast, e, { blastType: 'bomb' });
   }
 
   computeBombBlast(i) {
@@ -353,6 +382,53 @@ export class Game {
     this.state.blobs.forEach((ob, gi) => {
       if (ob.popping || ob.finalRow != null) return;
       if (Math.max(Math.abs(ob.col - b.col), Math.abs(ob.row - b.row)) <= 1) blast.push(gi);
+    });
+    return blast;
+  }
+
+  explodeRocket(i, e) {
+    const blast = this.computeRocketBlast(i);
+    this.vib([15, 15, 15, 15, 30]);
+    this.pop(blast, e, { blastType: 'rocket' });
+  }
+
+  // No chain-reaction handling: any other unactivated special caught in the
+  // line just gets force-popped like a normal blob (matches bomb precedent).
+  computeRocketBlast(i) {
+    const b = this.state.blobs[i];
+    const blast = [];
+    this.state.blobs.forEach((ob, gi) => {
+      if (ob.popping || ob.finalRow != null) return;
+      if (b.dir === 'col' ? ob.col === b.col : ob.row === b.row) blast.push(gi);
+    });
+    return blast;
+  }
+
+  explodeRainbow(i, e) {
+    const blast = this.computeRainbowBlast(i);
+    this.vib([15, 15, 15, 15, 15, 40]);
+    this.pop(blast, e, { blastType: 'rainbow' });
+  }
+
+  // Targets whichever color currently has the most non-special blobs on the
+  // board, computed fresh at tap time (not stored at spawn) so it reflects
+  // the live board rather than the group that originally spawned the
+  // rainbow. The rainbow blob itself always pops as part of its own blast.
+  computeRainbowBlast(i) {
+    const counts = new Map();
+    this.state.blobs.forEach(ob => {
+      if (ob.popping || ob.finalRow != null || ob.special) return;
+      counts.set(ob.color, (counts.get(ob.color) || 0) + 1);
+    });
+    let targetColor = null, best = -1;
+    counts.forEach((count, color) => {
+      if (count > best || (count === best && color < targetColor)) { best = count; targetColor = color; }
+    });
+    const blast = [];
+    this.state.blobs.forEach((ob, gi) => {
+      if (gi === i) { blast.push(gi); return; }
+      if (ob.popping || ob.finalRow != null) return;
+      if (ob.color === targetColor && !ob.special) blast.push(gi);
     });
     return blast;
   }
@@ -373,16 +449,17 @@ export class Game {
 
   findBestMove() {
     const blobs = this.state.blobs;
-    let bestBomb = null, bestBombGain = -1;
+    const computeBlast = { bomb: i => this.computeBombBlast(i), rocket: i => this.computeRocketBlast(i), rainbow: i => this.computeRainbowBlast(i) };
+    let bestSpecial = null, bestSpecialGain = -1, bestSpecialType = null;
     blobs.forEach((b, i) => {
-      if (b.special !== 'bomb') return;
-      const blast = this.computeBombBlast(i);
-      const gain = blast.length * 50;
-      if (gain > bestBombGain) { bestBombGain = gain; bestBomb = blast; }
+      if (!b.special || !computeBlast[b.special]) return;
+      const blast = computeBlast[b.special](i);
+      const gain = blast.length * BLAST_RATE[b.special];
+      if (gain > bestSpecialGain) { bestSpecialGain = gain; bestSpecial = blast; bestSpecialType = b.special; }
     });
     const group = this.bestGroup();
     const groupGain = group ? group.length * group.length * 5 : -1;
-    if (bestBomb && bestBombGain >= groupGain) return { type: 'bomb', blast: bestBomb };
+    if (bestSpecial && bestSpecialGain >= groupGain) return { type: bestSpecialType, blast: bestSpecial };
     if (group) return { type: 'group', group };
     return null;
   }
@@ -401,11 +478,11 @@ export class Game {
       if (s.moves <= 0) { this.endBonusRound(stars, runId); return; }
       const move = this.findBestMove();
       if (!move) { this.endBonusRound(stars, runId); return; }
-      if (move.type === 'bomb') {
-        this.pop(move.blast, null, { isBombBlast: true });
+      if (move.type !== 'group') {
+        this.pop(move.blast, null, { blastType: move.type });
       } else {
-        const spawnBombAt = (this.level.hasBombs && move.group.length >= 8) ? move.group[0] : null;
-        this.pop(move.group, null, { spawnBombAt });
+        const specialType = this.level.hasBombs ? specialForGroupSize(move.group.length) : null;
+        this.pop(move.group, null, { spawnSpecialAt: specialType ? move.group[0] : null, spawnSpecialType: specialType });
       }
       this.waitUntilIdle(runId, step);
     };
@@ -461,14 +538,22 @@ export class Game {
 
   applyMoveInstant(move) {
     const s = this.state;
-    const group = move.type === 'bomb' ? move.blast : move.group;
-    const gain = move.type === 'bomb' ? group.length * 50 : group.length * group.length * 5;
-    const bombIdx = (move.type === 'group' && this.level.hasBombs && group.length >= 8) ? group[0] : null;
-    group.forEach(gi => { if (gi !== bombIdx) s.blobs[gi].popping = true; });
-    if (bombIdx != null) s.blobs[bombIdx].special = 'bomb';
+    const group = move.type !== 'group' ? move.blast : move.group;
+    const gain = move.type !== 'group' ? group.length * BLAST_RATE[move.type] : group.length * group.length * 5;
+    const specialType = move.type === 'group' && this.level.hasBombs ? specialForGroupSize(group.length) : null;
+    const specialIdx = specialType ? group[0] : null;
+    group.forEach(gi => { if (gi !== specialIdx) s.blobs[gi].popping = true; });
+    if (specialIdx != null) {
+      const sb = s.blobs[specialIdx];
+      sb.special = specialType;
+      if (specialType === 'rocket') {
+        const cols = group.map(gi => s.blobs[gi].col), rows = group.map(gi => s.blobs[gi].row);
+        sb.dir = (Math.max(...cols) - Math.min(...cols)) >= (Math.max(...rows) - Math.min(...rows)) ? 'row' : 'col';
+      }
+    }
     const t = this.level.target;
     if (t.type === 'color') {
-      const clearedAdd = group.filter(gi => gi !== bombIdx && s.blobs[gi].color === t.color).length;
+      const clearedAdd = group.filter(gi => gi !== specialIdx && s.blobs[gi].color === t.color).length;
       s.cleared = Math.min(t.count, s.cleared + clearedAdd);
     }
     s.moves -= 1;
@@ -488,6 +573,7 @@ export class Game {
       dead.forEach((b, k) => {
         b.color = this.randColor();
         b.special = null;
+        b.dir = null;
         b.popping = false;
         b.row = r - k;
         b.finalRow = null;
@@ -586,17 +672,26 @@ export class Game {
     opts = opts || {};
     this.busy = true;
     const n = group.length;
-    const gain = opts.isBombBlast ? n * 50 : n * n * 5;
-    const bombIdx = opts.spawnBombAt != null ? opts.spawnBombAt : null;
+    const gain = opts.blastType ? n * BLAST_RATE[opts.blastType] : n * n * 5;
+    const specialIdx = opts.spawnSpecialAt != null ? opts.spawnSpecialAt : null;
+    const specialType = opts.spawnSpecialType || null;
     const newParts = [];
     const boardRect = this.board.getBoundingClientRect();
     const stagger = this.scaleMs(45);
     const popDur = this.scaleMs(300);
-    const bombDur = this.scaleMs(500);
-    const bombDelay = this.scaleMs(200);
+    const specialDur = this.scaleMs(500);
+    const specialDelay = this.scaleMs(200);
+
+    // Rocket direction must be decided from the group's shape before its
+    // blobs' row/col get mutated by collapse() later this tick.
+    let rocketDir = null;
+    if (specialType === 'rocket') {
+      const cols = group.map(gi => this.state.blobs[gi].col), rows = group.map(gi => this.state.blobs[gi].row);
+      rocketDir = (Math.max(...cols) - Math.min(...cols)) >= (Math.max(...rows) - Math.min(...rows)) ? 'row' : 'col';
+    }
 
     group.forEach((gi, k) => {
-      if (gi === bombIdx) return; // this slot becomes a bomb instead of popping
+      if (gi === specialIdx) return; // this slot becomes a special instead of popping
       const b = this.state.blobs[gi];
       const pal = PAL[b.color];
       const c = this.centerPct(b);
@@ -614,15 +709,17 @@ export class Game {
       b.anim = `popOut ${popDur}ms ${k * stagger}ms cubic-bezier(.34,1.2,.64,1) forwards`;
     });
 
-    if (bombIdx != null) {
-      const bb = this.state.blobs[bombIdx];
-      bb.special = 'bomb';
-      bb.anim = `bombSpawn ${bombDur}ms ${bombDelay}ms cubic-bezier(.34,1.56,.64,1) backwards`;
+    if (specialIdx != null) {
+      const sb = this.state.blobs[specialIdx];
+      sb.special = specialType;
+      sb.dir = rocketDir;
+      const keyframe = specialType === 'bomb' ? 'bombSpawn' : specialType === 'rocket' ? 'rocketSpawn' : 'rainbowSpawn';
+      sb.anim = `${keyframe} ${specialDur}ms ${specialDelay}ms cubic-bezier(.34,1.56,.64,1) backwards`;
     }
 
     let combo = null;
     if (n >= 5) {
-      const txt = bombIdx != null ? 'BOMB!' : (n >= 10 ? 'WOW!' : n >= 7 ? 'SWEET!' : 'NICE!');
+      const txt = specialType === 'rainbow' ? 'RAINBOW!' : specialType === 'rocket' ? 'ROCKET!' : specialType === 'bomb' ? 'BOMB!' : (n >= 10 ? 'WOW!' : n >= 7 ? 'SWEET!' : 'NICE!');
       let x = 50, y = 40;
       if (boardRect && e && e.clientX != null) {
         x = Math.min(82, Math.max(18, (e.clientX - boardRect.left) / boardRect.width * 100));
@@ -637,7 +734,7 @@ export class Game {
     const t = this.level.target;
     let clearedAdd = 0;
     if (t.type === 'color') {
-      clearedAdd = group.filter(gi => gi !== bombIdx && this.state.blobs[gi].color === t.color).length;
+      clearedAdd = group.filter(gi => gi !== specialIdx && this.state.blobs[gi].color === t.color).length;
     }
     this.state.particles = this.state.particles.concat(newParts);
     this.state.combo = combo || this.state.combo;
@@ -683,6 +780,7 @@ export class Game {
         const b = blobs[i];
         b.color = this.randColor();
         b.special = null;
+        b.dir = null;
         b.popping = false;
         b.noTrans = true;
         b.anim = 'none';
@@ -714,7 +812,7 @@ export class Game {
 
   anyMoves() {
     const blobs = this.state.blobs;
-    if (blobs.some(b => b.special === 'bomb')) return true;
+    if (blobs.some(b => b.special)) return true;
     const grid = {};
     blobs.forEach(b => { grid[b.row * this.COLS + b.col] = b.special ? null : b.color; });
     return blobs.some(b => {
@@ -829,25 +927,27 @@ export class Game {
       el._lastAnim = anim;
     }
 
-    if (b.special === 'bomb') {
-      body.style.background = 'radial-gradient(circle at 33% 28%, #6b6b7a 0%, #33333f 55%, #131318 100%)';
+    if (b.special) {
+      const spec = SPECIAL_VISUALS[b.special];
+      body.style.background = spec.gradient;
       el._gloss.style.display = 'none';
       el._accWrap.style.display = 'none';
       el._eyesWrap.style.display = 'none';
       el._mouthWrap.style.display = 'none';
-      if (!el._bombIcon) {
+      if (!el._specialIcon) {
         const ic = document.createElement('div');
-        ic.className = 'bomb-icon';
-        ic.textContent = '💣';
+        ic.className = 'special-icon';
         body.appendChild(ic);
-        el._bombIcon = ic;
+        el._specialIcon = ic;
       }
-      el._bombIcon.style.display = 'flex';
+      el._specialIcon.textContent = spec.icon;
+      el._specialIcon.style.transform = (b.special === 'rocket' && b.dir === 'col') ? 'rotate(90deg)' : 'none';
+      el._specialIcon.style.display = 'flex';
       el._lastSpecial = true;
       return;
     }
 
-    if (el._bombIcon) el._bombIcon.style.display = 'none';
+    if (el._specialIcon) el._specialIcon.style.display = 'none';
     el._gloss.style.display = '';
     el._accWrap.style.display = '';
     el._eyesWrap.style.display = '';
