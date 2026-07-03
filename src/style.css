@@ -463,11 +463,13 @@ html, body {
 
 .overlay-btn-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   justify-content: center;
   margin-top: 18px;
 }
 .overlay-btn-row .btn-pill { margin-top: 0; }
+.btn-pill-full { display: block; width: 100%; box-sizing: border-box; }
 .btn-circle {
   width: 46px;
   height: 46px;
