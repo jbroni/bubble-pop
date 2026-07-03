@@ -89,6 +89,7 @@ export class Game {
     this.ROWS = this.level.rows;
     this.els.levelTitle.textContent = `Level ${levelNum}`;
     this.buildGoalChip();
+    this.measure();
     this.startLevel();
   }
 
@@ -136,6 +137,17 @@ export class Game {
     const boardH = Math.round(bw / ar);
     this.board.style.width = boardW + 'px';
     this.board.style.height = boardH + 'px';
+    // Re-measure the board's actual rendered box rather than trusting boardW/boardH:
+    // the flex layout can shrink .board to fit its padded container, so the requested
+    // size and the real rendered size can differ (e.g. cutting off the last column).
+    const rect = this.board.getBoundingClientRect();
+    this.cellW = rect.width / this.COLS;
+    this.cellH = rect.height / this.ROWS;
+    this.blobEls.forEach((blobEl) => {
+      blobEl.style.width = this.cellW + 'px';
+      blobEl.style.height = this.cellH + 'px';
+    });
+    if (this.state) this.state.blobs.forEach((_, i) => this.renderBlob(i));
   }
 
   blinkStr() {
@@ -183,6 +195,8 @@ export class Game {
   createBlobEl(i) {
     const el = document.createElement('div');
     el.className = 'blob';
+    el.style.width = this.cellW + 'px';
+    el.style.height = this.cellH + 'px';
     el.addEventListener('pointerdown', (e) => this.tapBlob(i, e));
 
     const body = document.createElement('div');
@@ -220,6 +234,9 @@ export class Game {
     el._mouthWrap = mouthWrap;
     el._lastColor = null;
     el._lastSpecial = false;
+    el._lastAnim = null;
+    el._lastBlink = null;
+    el._lastTransDur = null;
     return el;
   }
 
@@ -651,13 +668,17 @@ export class Game {
 
   collapse() {
     const blobs = this.state.blobs;
+    const affected = [];
     for (let c = 0; c < this.COLS; c++) {
-      const colB = blobs.filter(b => b.col === c);
-      const surv = colB.filter(b => !b.popping).sort((a, b) => a.row - b.row);
-      const dead = colB.filter(b => b.popping);
+      const colIdx = [];
+      blobs.forEach((b, i) => { if (b.col === c) colIdx.push(i); });
+      const surv = colIdx.filter(i => !blobs[i].popping).sort((a, b) => blobs[a].row - blobs[b].row);
+      const dead = colIdx.filter(i => blobs[i].popping);
+      if (!dead.length) continue;
       let r = this.ROWS - 1;
-      for (let k = surv.length - 1; k >= 0; k--) surv[k].row = r--;
-      dead.forEach((b, k) => {
+      for (let k = surv.length - 1; k >= 0; k--) blobs[surv[k]].row = r--;
+      dead.forEach((i, k) => {
+        const b = blobs[i];
         b.color = this.randColor();
         b.special = null;
         b.popping = false;
@@ -667,23 +688,26 @@ export class Game {
         b.finalRow = r - k;
         b.row = -(k + 1);
       });
+      affected.push(...colIdx);
     }
-    this.render();
+    affected.forEach(i => this.renderBlob(i));
+    this.renderHud();
 
-    setTimeout(() => {
-      this.state.blobs.forEach((b) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      affected.forEach(i => {
+        const b = this.state.blobs[i];
         if (b.finalRow != null) {
           b.row = b.finalRow;
           b.finalRow = null;
           b.noTrans = false;
         }
       });
-      this.render();
+      affected.forEach(i => this.renderBlob(i));
       setTimeout(() => {
         this.busy = false;
         this.checkEnd();
       }, this.scaleMs(480));
-    }, this.scaleMs(50));
+    }));
   }
 
   anyMoves() {
@@ -788,16 +812,20 @@ export class Game {
     const b = this.state.blobs[i];
     const el = this.blobEls[i];
     if (!el) return;
-    const CW = 100 / this.COLS, CH = 100 / this.ROWS;
-    el.style.left = (b.col * CW).toFixed(3) + '%';
-    el.style.top = (b.row * CH).toFixed(3) + '%';
-    el.style.width = CW.toFixed(3) + '%';
-    el.style.height = CH.toFixed(3) + '%';
+    el.style.transform = `translate3d(${(b.col * this.cellW).toFixed(2)}px, ${(b.row * this.cellH).toFixed(2)}px, 0)`;
     el.classList.toggle('no-trans', !!b.noTrans);
-    el.style.transitionDuration = this.state.phase === 'bonus' ? this.scaleMs(450) + 'ms' : '';
+    const transDur = this.state.phase === 'bonus' ? this.scaleMs(450) + 'ms' : '';
+    if (el._lastTransDur !== transDur) {
+      el.style.transitionDuration = transDur;
+      el._lastTransDur = transDur;
+    }
 
     const body = el._body;
-    body.style.animation = b.anim || 'none';
+    const anim = b.anim || 'none';
+    if (el._lastAnim !== anim) {
+      body.style.animation = anim;
+      el._lastAnim = anim;
+    }
 
     if (b.special === 'bomb') {
       body.style.background = 'radial-gradient(circle at 33% 28%, #6b6b7a 0%, #33333f 55%, #131318 100%)';
@@ -839,10 +867,15 @@ export class Game {
       el._lastSpecial = false;
     }
 
-    el._eyesWrap.style.animation = `blink ${b.blink} infinite`;
+    const blinkAnim = `blink ${b.blink} infinite`;
+    if (el._lastBlink !== blinkAnim) {
+      el._eyesWrap.style.animation = blinkAnim;
+      el._lastBlink = blinkAnim;
+    }
   }
 
   spawnParticles(parts) {
+    if (!this._particleEls) this._particleEls = new Map();
     parts.forEach(p => {
       const el = document.createElement('div');
       el.className = 'particle';
@@ -854,14 +887,16 @@ export class Game {
       el.style.setProperty('--dx', p.dx + 'px');
       el.style.setProperty('--dy', p.dy + 'px');
       el.style.animationDelay = p.d + 'ms';
-      el.dataset.pid = p.id;
       this.board.appendChild(el);
+      this._particleEls.set(p.id, el);
     });
   }
   cleanupParticles(ids) {
+    if (!this._particleEls) return;
     ids.forEach(id => {
-      const el = this.board.querySelector(`.particle[data-pid="${id}"]`);
+      const el = this._particleEls.get(id);
       if (el) el.remove();
+      this._particleEls.delete(id);
     });
   }
 
