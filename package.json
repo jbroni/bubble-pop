@@ -1,0 +1,12 @@
+{
+  "name": "bubble-pop",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Bubble Pop - static web game",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0"
+  }
+}
