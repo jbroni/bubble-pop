@@ -4,12 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repo state
 
-The full 30-level game is implemented as a static, dependency-free web app:
+The full 50-level game is implemented as a static, dependency-free web app:
 - `index.html` — both screens' markup: `#mapScreen` (level select) and `#app` (gameplay: HUD, board, win/lose overlays). Only one is visible at a time (`hidden` attribute), toggled by `src/main.js`.
 - `src/main.js` — entry point; owns screen switching and the single `Game` instance (`showMap()` / `playLevel(n)`).
-- `src/levels.js` — the palette (`PAL`, 6 colors) and `LEVELS`, a generated array of 30 data-driven level configs (`{n, cols, rows, numColors, moves, target, hasBombs}`). Level 1 is hand-specified to match the README's fully-juiced prototype exactly; levels 2–30 ramp difficulty procedurally per the README roadmap (3→6 colors, tightening move budgets, `hasBombs: true` from level 10, every 7th level is a score-target instead of color-clear).
+- `src/levels.js` — the palette (`PAL`, 6 colors) and `LEVELS`, a generated array of 50 data-driven level configs (`{n, cols, rows, numColors, moves, target, hasBombs}`). Level 1 is hand-specified (close to the README's fully-juiced prototype, but with `numColors: 3` to match the level 2–4 ramp); levels 2–30 ramp difficulty procedurally per the README roadmap (3→6 colors, tightening move budgets, `hasBombs: true` from level 10, every 7th level is a score-target instead of color-clear); levels 31–50 extend the move-budget and target-count ramps further past their level-30 values.
 - `src/levelmap.js` — renders the level-select grid from `LEVELS` + saved progress (locked/unlocked, stars).
-- `src/progress.js` — `localStorage` persistence (`bubblepop.progress`: `{unlocked, levels: {[n]: {stars, score}}}`), wrapped in try/catch.
+- `src/progress.js` — `localStorage` persistence (`bubblepop.progress`: `{unlocked, levels: {[n]: {stars, score}}}`), wrapped in try/catch. Also exposes `isLocked(n, progress)`, the single source of truth for whether a level can be entered: besides the sequential unlock (clear level *n* to open *n+1*), every block of `STAR_GATE_SIZE` (10) levels adds a decade star-gate — entering levels 11+ requires averaging `STAR_GATE_AVG` (2.5) stars or more across the preceding block of 10 (unplayed levels count as 0★). `levelmap.js`, `main.js` (the win overlay's "Next level" flow), and `game.js` (`showWin()`'s button label) all defer to this function.
 - `src/game.js` — the `Game` class: per-level state, flood-fill/collapse logic, bomb special-blob logic, rendering, audio. One instance is reused across levels via `Game.loadLevel(n)`.
 - `src/style.css` — all visual styling and CSS `@keyframes` animations for both screens.
 - `README.md` — the original handoff spec (game rules, visuals, animation timings, roadmap). Still the source of truth for tuning values on Level 1 and for the overall design language.

@@ -1,5 +1,5 @@
 import { PAL, getLevel, TOTAL_LEVELS } from './levels.js';
-import { recordResult, loadProgress } from './progress.js';
+import { recordResult, loadProgress, isLocked } from './progress.js';
 import { loadIdentity, setNickname } from './identity.js';
 import { submitScore, fetchTop3 } from './leaderboard.js';
 
@@ -962,7 +962,8 @@ export class Game {
     } else {
       this.els.winBest.hidden = true;
     }
-    this.els.winNextBtn.textContent = this.levelNum < TOTAL_LEVELS ? 'Next level' : 'Levels';
+    const nextLocked = this.levelNum >= TOTAL_LEVELS || isLocked(this.levelNum + 1, loadProgress());
+    this.els.winNextBtn.textContent = nextLocked ? 'Levels' : 'Next level';
     this.els.winOverlay.hidden = false;
   }
 

@@ -1,5 +1,5 @@
 import { TOTAL_LEVELS } from './levels.js';
-import { loadProgress } from './progress.js';
+import { loadProgress, isLocked, STAR_GATE_SIZE, STAR_GATE_AVG } from './progress.js';
 
 function formatScore(n) {
   if (n >= 1000) {
@@ -13,13 +13,19 @@ export function renderMap(container, onSelect) {
   const progress = loadProgress();
   container.innerHTML = '';
   for (let n = 1; n <= TOTAL_LEVELS; n++) {
-    const locked = n > progress.unlocked;
+    const locked = isLocked(n, progress);
     const info = progress.levels[n];
 
     const btn = document.createElement('button');
     btn.className = 'level-btn' + (locked ? ' locked' : '') + (info ? ' cleared' : '');
     btn.type = 'button';
     btn.disabled = locked;
+
+    if (locked && n <= progress.unlocked && n > STAR_GATE_SIZE) {
+      const prevDecadeStart = Math.floor((n - 1) / STAR_GATE_SIZE - 1) * STAR_GATE_SIZE + 1;
+      const prevDecadeEnd = prevDecadeStart + STAR_GATE_SIZE - 1;
+      btn.title = `Requires ${STAR_GATE_AVG}★ average in levels ${prevDecadeStart}-${prevDecadeEnd}`;
+    }
 
     const num = document.createElement('div');
     num.className = 'level-num';

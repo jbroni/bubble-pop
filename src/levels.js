@@ -8,26 +8,30 @@ export const PAL = [
   { name: 'Orange', hi: '#ffe3c4', c1: '#ff9440', c2: '#e05e08' },
 ];
 
-export const TOTAL_LEVELS = 30;
+export const TOTAL_LEVELS = 50;
 const COLS = 7;
 const ROWS = 9;
 
 // Level config is data: {cols, rows, colors, moves, target, hasBombs}.
-// Level 1 matches the README's fully-juiced prototype spec exactly.
+// Level 1 matches the README's fully-juiced prototype spec, except numColors
+// is dropped to 3 to match the level 2-4 ramp (see level-progression plan).
 // Levels 2-30 are generated to satisfy the roadmap: ramp 3->6 colors,
 // tighter move budgets, varied objectives (color-clear + score targets),
-// and special "bomb" blobs unlocked around level 10.
+// and special "bomb" blobs unlocked around level 10. Levels 31-50 extend
+// the move-budget and target-count ramps further past their level-30 values.
 function buildLevel(n) {
   if (n === 1) {
     return {
-      n, cols: COLS, rows: ROWS, numColors: 4, moves: 22,
+      n, cols: COLS, rows: ROWS, numColors: 3, moves: 22,
       target: { type: 'color', color: 0, count: 25 },
       hasBombs: false,
     };
   }
 
   const numColors = n <= 4 ? 3 : n <= 9 ? 4 : n <= 17 ? 5 : 6;
-  const moves = Math.max(14, 24 - Math.floor((n - 2) / 3));
+  const moves = n <= 30
+    ? Math.max(14, 24 - Math.floor((n - 2) / 3))
+    : Math.max(10, 14 - Math.floor((n - 31) / 4));
   const hasBombs = n >= 10;
 
   // Every 7th level is a score-target level (README: "later possibly score targets").
@@ -37,7 +41,9 @@ function buildLevel(n) {
   }
 
   const color = (n - 1) % numColors;
-  const count = Math.min(48, 18 + Math.floor(n * 1.3));
+  const count = n <= 30
+    ? Math.min(48, 18 + Math.floor(n * 1.3))
+    : Math.min(60, 48 + Math.floor((n - 30) * 0.6));
   return { n, cols: COLS, rows: ROWS, numColors, moves, target: { type: 'color', color, count }, hasBombs };
 }
 

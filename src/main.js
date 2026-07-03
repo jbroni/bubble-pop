@@ -1,6 +1,7 @@
 import { TOTAL_LEVELS } from './levels.js';
 import { Game } from './game.js';
 import { renderMap } from './levelmap.js';
+import { loadProgress, isLocked } from './progress.js';
 
 const mapScreen = document.getElementById('mapScreen');
 const app = document.getElementById('app');
@@ -22,7 +23,14 @@ function playLevel(n) {
   } else {
     game = new Game(n, {
       onBack: showMap,
-      onNext: (next) => game.loadLevel(Math.min(TOTAL_LEVELS, next)),
+      onNext: (next) => {
+        const target = Math.min(TOTAL_LEVELS, next);
+        if (isLocked(target, loadProgress())) {
+          showMap();
+        } else {
+          game.loadLevel(target);
+        }
+      },
     });
     window.__bubblePopGame = game; // debug hook, harmless in production
   }

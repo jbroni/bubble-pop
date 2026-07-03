@@ -31,3 +31,32 @@ export function recordResult(levelNum, { stars, score }, totalLevels) {
   saveProgress(progress);
   return progress;
 }
+
+// Every STAR_GATE_SIZE levels adds an extra lock on top of the sequential
+// unlock: entering the next block of levels requires averaging at least
+// STAR_GATE_AVG stars across the whole preceding block (unplayed levels
+// count as 0 stars).
+export const STAR_GATE_SIZE = 10;
+export const STAR_GATE_AVG = 2.5;
+
+// decadeIndex is 0-based: decade 0 covers levels 1-10, decade 1 covers 11-20, etc.
+export function decadeStars(progress, decadeIndex) {
+  const start = decadeIndex * STAR_GATE_SIZE + 1;
+  const end = start + STAR_GATE_SIZE - 1;
+  let total = 0;
+  for (let lvl = start; lvl <= end; lvl++) {
+    total += (progress.levels[lvl] && progress.levels[lvl].stars) || 0;
+  }
+  return total;
+}
+
+export function isDecadeGateOpen(progress, decadeIndex) {
+  return decadeStars(progress, decadeIndex) >= STAR_GATE_SIZE * STAR_GATE_AVG;
+}
+
+export function isLocked(n, progress) {
+  if (n > progress.unlocked) return true;
+  if (n <= STAR_GATE_SIZE) return false;
+  const prevDecade = Math.floor((n - 1) / STAR_GATE_SIZE) - 1;
+  return !isDecadeGateOpen(progress, prevDecade);
+}
