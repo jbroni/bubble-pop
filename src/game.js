@@ -1,10 +1,10 @@
-import { PAL, getLevel, TOTAL_LEVELS } from './levels.js?v=20260703200214-b5366ad8';
-import { recordResult, loadProgress, isLocked } from './progress.js?v=20260703200214-b5366ad8';
-import { loadIdentity, setNickname } from './identity.js?v=20260703200214-b5366ad8';
-import { submitScore } from './leaderboard.js?v=20260703200214-b5366ad8';
-import { syncProgressToCloud } from './progress-sync.js?v=20260703200214-b5366ad8';
-import { showLeaderboardOverlay, hideLeaderboardOverlay } from './leaderboard-ui.js?v=20260703200214-b5366ad8';
-import { loadSoundOn, saveSoundOn } from './sound-pref.js?v=20260703200214-b5366ad8';
+import { PAL, getLevel, TOTAL_LEVELS } from './levels.js?v=20260703202202-9fb6649c';
+import { recordResult, loadProgress, isLocked } from './progress.js?v=20260703202202-9fb6649c';
+import { loadIdentity, setNickname } from './identity.js?v=20260703202202-9fb6649c';
+import { submitScore } from './leaderboard.js?v=20260703202202-9fb6649c';
+import { syncProgressToCloud } from './progress-sync.js?v=20260703202202-9fb6649c';
+import { showLeaderboardOverlay, hideLeaderboardOverlay } from './leaderboard-ui.js?v=20260703202202-9fb6649c';
+import { loadSoundOn, saveSoundOn } from './sound-pref.js?v=20260703202202-9fb6649c';
 
 function loadBestFor(levelNum) {
   const p = loadProgress();
@@ -380,7 +380,7 @@ export class Game {
   triggerSpecial(i, type, e) {
     const { blast, gain, chained } = this.computeChainBlast(i, type);
     this.vib(chained ? [15, 15, 15, 15, 15, 15, 50] : type === 'rainbow' ? [15, 15, 15, 15, 15, 40] : [15, 15, 15, 15, 30]);
-    this.pop(blast, e, { blastType: type, gain });
+    this.pop(blast, e, { blastType: type, gain, originIdx: i });
   }
 
   computeSpecialBlast(i, type) {
@@ -650,6 +650,12 @@ export class Game {
   pop(group, e, opts) {
     opts = opts || {};
     this.busy = true;
+    if (opts.blastType) {
+      const originIdx = opts.originIdx != null ? opts.originIdx : group[0];
+      const ob = this.state.blobs[originIdx];
+      this.spawnBlastEffect(opts.blastType, this.centerPct(ob), ob.dir);
+      this.blastBoom(opts.blastType);
+    }
     const n = group.length;
     const gain = opts.gain != null ? opts.gain : opts.blastType ? n * BLAST_RATE[opts.blastType] : n * n * 5;
     const specialIdx = opts.spawnSpecialAt != null ? opts.spawnSpecialAt : null;
@@ -669,20 +675,25 @@ export class Game {
       rocketDir = (Math.max(...cols) - Math.min(...cols)) >= (Math.max(...rows) - Math.min(...rows)) ? 'row' : 'col';
     }
 
+    const PARTICLE_CAP_BLOBS = 10; // ~60 particles at 6/blob
+    let particleBlobs = 0;
     group.forEach((gi, k) => {
       if (gi === specialIdx) return; // this slot becomes a special instead of popping
       const b = this.state.blobs[gi];
       const pal = PAL[b.color];
       const c = this.centerPct(b);
-      this.playPop(k);
-      for (let j = 0; j < 6; j++) {
-        const a = Math.random() * Math.PI * 2;
-        const d = 30 + Math.random() * 70;
-        newParts.push({
-          id: this.pid++, l: +c.x.toFixed(2), t: +c.y.toFixed(2),
-          s: Math.round(5 + Math.random() * 7), c: j % 2 ? pal.c1 : pal.hi,
-          dx: Math.round(Math.cos(a) * d), dy: Math.round(Math.sin(a) * d - 25), d: k * stagger,
-        });
+      if (!opts.blastType) this.playPop(k);
+      if (particleBlobs < PARTICLE_CAP_BLOBS) {
+        particleBlobs++;
+        for (let j = 0; j < 6; j++) {
+          const a = Math.random() * Math.PI * 2;
+          const d = 30 + Math.random() * 70;
+          newParts.push({
+            id: this.pid++, l: +c.x.toFixed(2), t: +c.y.toFixed(2),
+            s: Math.round(5 + Math.random() * 7), c: j % 2 ? pal.c1 : pal.hi,
+            dx: Math.round(Math.cos(a) * d), dy: Math.round(Math.sin(a) * d - 25), d: k * stagger,
+          });
+        }
       }
       b.popping = true;
       b.anim = `popOut ${popDur}ms ${k * stagger}ms cubic-bezier(.34,1.2,.64,1) forwards`;
@@ -891,6 +902,51 @@ export class Game {
     const notes = win ? [523, 659, 784, 1046] : [392, 330, 262];
     notes.forEach((f, i) => this.tone(t + i * 0.13, f, f, 0.28, 0.18, 'triangle'));
   }
+  noiseBuffer() {
+    if (!this._noiseBuffer) {
+      const len = this.ctx.sampleRate * 0.3;
+      const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+      this._noiseBuffer = buf;
+    }
+    return this._noiseBuffer;
+  }
+  noiseBurst(t, dur, vol, filterType, freq) {
+    if (!this.ctx || !this.soundOn) return;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noiseBuffer();
+    const filt = this.ctx.createBiquadFilter();
+    filt.type = filterType;
+    filt.frequency.value = freq;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(filt); filt.connect(g); g.connect(this.ctx.destination);
+    src.start(t); src.stop(t + dur + 0.02);
+  }
+  boom() {
+    if (!this.ctx || !this.soundOn) return;
+    const t = this.ctx.currentTime;
+    this.tone(t, 160, 55, 0.34, 0.3, 'sine');
+    this.noiseBurst(t, 0.22, 0.22, 'lowpass', 500);
+  }
+  whoosh() {
+    if (!this.ctx || !this.soundOn) return;
+    const t = this.ctx.currentTime;
+    this.tone(t, 500, 1800, 0.22, 0.2, 'sawtooth');
+    this.noiseBurst(t, 0.18, 0.1, 'highpass', 3000);
+  }
+  shimmer() {
+    if (!this.ctx || !this.soundOn) return;
+    const t = this.ctx.currentTime;
+    [880, 1108, 1318, 1760].forEach((f, i) => this.tone(t + i * 0.045, f * 0.98, f * 1.02, 0.14, 0.16, 'triangle'));
+  }
+  blastBoom(type) {
+    if (type === 'bomb') this.boom();
+    else if (type === 'rocket') this.whoosh();
+    else if (type === 'rainbow') this.shimmer();
+  }
   vib(p) {
     try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) { /* ignore */ }
   }
@@ -1007,6 +1063,30 @@ export class Game {
       if (el) el.remove();
       this._particleEls.delete(id);
     });
+  }
+
+  // One-shot, O(1)-per-explosion overlay (shockwave/beam/pulse) — distinct from
+  // spawnParticles which is O(blast size). Percent-positioned like particles,
+  // removed via setTimeout matched to its CSS animation duration.
+  spawnBlastEffect(type, originPct, dir) {
+    const el = document.createElement('div');
+    const dur = this.scaleMs(type === 'bomb' ? 500 : type === 'rocket' ? 420 : 620);
+    if (type === 'bomb') {
+      el.className = 'blast-fx blast-bomb';
+      el.style.left = originPct.x + '%';
+      el.style.top = originPct.y + '%';
+    } else if (type === 'rocket') {
+      el.className = 'blast-fx blast-rocket ' + (dir === 'row' ? 'blast-rocket-row' : 'blast-rocket-col');
+      el.style.left = dir === 'row' ? '0' : originPct.x + '%';
+      el.style.top = dir === 'col' ? '0' : originPct.y + '%';
+    } else {
+      el.className = 'blast-fx blast-rainbow';
+      el.style.left = originPct.x + '%';
+      el.style.top = originPct.y + '%';
+    }
+    el.style.animationDuration = dur + 'ms';
+    this.board.appendChild(el);
+    setTimeout(() => el.remove(), dur + 40);
   }
 
   updateCombo() {

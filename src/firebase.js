@@ -1,4 +1,4 @@
-import { firebaseConfig } from './firebase-config.js?v=20260703200214-b5366ad8';
+import { firebaseConfig } from './firebase-config.js?v=20260703202202-9fb6649c';
 
 const FIREBASE_JS_VERSION = '10.14.1';
 const cdn = (name) => `https://www.gstatic.com/firebasejs/${FIREBASE_JS_VERSION}/${name}.js`;
