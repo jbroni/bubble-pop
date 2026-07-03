@@ -1,5 +1,5 @@
-import { getFirebaseDb } from './firebase.js?v=20260703212255-e226876d';
-import { loadIdentity } from './identity.js?v=20260703212255-e226876d';
+import { getFirebaseDb } from './firebase.js?v=20260703212533-bc194ddb';
+import { loadIdentity } from './identity.js?v=20260703212533-bc194ddb';
 
 // Fire-and-forget: backs up the whole local progress object to Firestore
 // under the current identity's uid. No-ops if no nickname has been set yet
