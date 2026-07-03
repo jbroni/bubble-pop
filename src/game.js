@@ -1,5 +1,7 @@
 import { PAL, getLevel, TOTAL_LEVELS } from './levels.js';
 import { recordResult, loadProgress } from './progress.js';
+import { loadIdentity, setNickname } from './identity.js';
+import { submitScore, fetchTop3 } from './leaderboard.js';
 
 function loadBestFor(levelNum) {
   const p = loadProgress();
@@ -39,6 +41,15 @@ export class Game {
       loseScore: document.getElementById('loseScore'),
       hint: document.getElementById('hint'),
       bonusSkipBtn: document.getElementById('bonusSkipBtn'),
+      winLeaderboardBtn: document.getElementById('winLeaderboardBtn'),
+      leaderboardOverlay: document.getElementById('leaderboardOverlay'),
+      leaderboardLevelLabel: document.getElementById('leaderboardLevelLabel'),
+      leaderboardList: document.getElementById('leaderboardList'),
+      leaderboardCloseBtn: document.getElementById('leaderboardCloseBtn'),
+      nicknameOverlay: document.getElementById('nicknameOverlay'),
+      nicknameInput: document.getElementById('nicknameInput'),
+      nicknameSaveBtn: document.getElementById('nicknameSaveBtn'),
+      nicknameSkipBtn: document.getElementById('nicknameSkipBtn'),
     };
 
     this.els.bonusSkipBtn.onclick = () => this.skipBonusRound();
@@ -55,6 +66,10 @@ export class Game {
         this.callbacks.onBack && this.callbacks.onBack();
       }
     };
+    this.els.winLeaderboardBtn.onclick = () => this.showLeaderboard();
+    this.els.leaderboardCloseBtn.onclick = () => this.hideLeaderboard();
+    this.els.nicknameSaveBtn.onclick = () => this.saveNickname();
+    this.els.nicknameSkipBtn.onclick = () => this.hideNickname();
 
     this._onResize = () => this.measure();
     window.addEventListener('resize', this._onResize);
@@ -153,6 +168,8 @@ export class Game {
     };
     this.els.winOverlay.hidden = true;
     this.els.loseOverlay.hidden = true;
+    this.els.leaderboardOverlay.hidden = true;
+    this.els.nicknameOverlay.hidden = true;
     this.rebuildBlobEls();
     this.render();
   }
@@ -468,9 +485,75 @@ export class Game {
     s.stars = stars;
     s.best = progress.levels[this.levelNum];
     s.phase = 'win';
-    this.showWin();
+    if (loadIdentity()) {
+      this.showWin();
+    } else {
+      this.showNickname();
+    }
     this.jingle(true);
     this.vib([20, 40, 20, 40, 40]);
+    submitScore(this.levelNum, s.score); // fire-and-forget; no-op until a nickname exists
+  }
+
+  showNickname() {
+    this.els.nicknameInput.value = '';
+    this.els.nicknameOverlay.hidden = false;
+  }
+
+  hideNickname() {
+    this.els.nicknameOverlay.hidden = true;
+    this.showWin();
+  }
+
+  async saveNickname() {
+    const name = this.els.nicknameInput.value;
+    await setNickname(name);
+    this.els.nicknameOverlay.hidden = true;
+    this.showWin();
+    submitScore(this.levelNum, this.state.score);
+  }
+
+  showLeaderboard() {
+    this.els.leaderboardLevelLabel.textContent = `Level ${this.levelNum}`;
+    this.els.leaderboardList.innerHTML = '<li class="leaderboard-empty">Loading…</li>';
+    this.els.leaderboardOverlay.hidden = false;
+    const levelNum = this.levelNum;
+    fetchTop3(levelNum).then(top => {
+      if (this.els.leaderboardOverlay.hidden || this.levelNum !== levelNum) return;
+      this.renderLeaderboard(top);
+    });
+  }
+
+  renderLeaderboard(top) {
+    this.els.leaderboardList.innerHTML = '';
+    if (!top.length) {
+      const li = document.createElement('li');
+      li.className = 'leaderboard-empty';
+      li.textContent = 'No scores yet — be the first!';
+      this.els.leaderboardList.appendChild(li);
+      return;
+    }
+    top.forEach((entry, i) => {
+      const li = document.createElement('li');
+      li.className = 'leaderboard-row';
+      const rank = document.createElement('span');
+      rank.className = 'leaderboard-rank';
+      rank.textContent = String(i + 1);
+      const name = document.createElement('span');
+      name.className = 'leaderboard-name';
+      name.textContent = entry.name;
+      const score = document.createElement('span');
+      score.className = 'leaderboard-score';
+      score.textContent = entry.score.toLocaleString();
+      li.appendChild(rank);
+      li.appendChild(name);
+      li.appendChild(score);
+      this.els.leaderboardList.appendChild(li);
+    });
+  }
+
+  hideLeaderboard() {
+    this.els.leaderboardOverlay.hidden = true;
   }
 
   // Bonus-round auto-pops reuse the normal pop()/collapse() animation path,

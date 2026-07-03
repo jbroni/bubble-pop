@@ -14,6 +14,9 @@ The full 30-level game is implemented as a static, dependency-free web app:
 - `src/style.css` — all visual styling and CSS `@keyframes` animations for both screens.
 - `README.md` — the original handoff spec (game rules, visuals, animation timings, roadmap). Still the source of truth for tuning values on Level 1 and for the overall design language.
 - `Bubble Pop.dc.html` — the original **design reference prototype** that `src/game.js` was ported from. Built with a proprietary "DC" templating format (`<x-dc>`, `sc-for`, `sc-if`, `{{ }}`) that only renders in its authoring tool — don't run it directly. Keep it as the fidelity reference for Level 1's exact look/feel.
+- `src/firebase-config.js` / `src/firebase.js` — Firebase web config (safe to commit; not a secret) and lazy SDK bootstrap, imported from Google's CDN as ES modules (`https://www.gstatic.com/firebasejs/...`) so no bundler is needed. `getFirebaseAuth()`/`getFirebaseDb()` return `null` until `firebase-config.js` is filled in, so the app degrades gracefully with leaderboard features disabled if Firebase isn't set up.
+- `src/identity.js` — nickname/anonymous-uid management. Caches `{uid, name}` in `localStorage` (`bubblepop.identity`); `ensureSignedIn()` lazily calls Firebase Anonymous Auth (only once a nickname is submitted, never on cold start); `setNickname()` writes the `users/{uid}` Firestore profile doc.
+- `src/leaderboard.js` — `submitScore(levelNum, score)` (transactional compare-and-swap against `leaderboard/{levelNum}/scores/{uid}`, never throws/blocks) and `fetchTop3(levelNum)` (returns `[]` on any failure) for the global top-3-per-level leaderboard.
 
 No `package.json`, build step, or test suite exists — plain HTML/CSS/JS served as static files. Because it uses ES modules, it must be served over HTTP (not opened via `file://`):
 
@@ -46,6 +49,21 @@ Deploy by pushing these static files to GitHub Pages / Netlify / Vercel as-is. T
 
 **Animation timings, colors, and design tokens for Level 1 are final** per the README ("Fidelity: High-fidelity... Recreate pixel-perfectly") — pull them from README.md's "Design tokens", "Interactions, animation & juice", and colorblind table rather than improvising. Levels 2–30's difficulty numbers are procedurally generated in `levels.js` (the README doesn't hand-specify them beyond the roadmap's qualitative direction) — adjust the formulas there if playtesting shows a level is miscalibrated.
 
+## Global leaderboard (Firebase)
+
+Each level has a global top-3 leaderboard, backed by Firebase (Anonymous Auth + Firestore), used purely client-side — the app is still 100% static and deploys to GitHub Pages as-is. Solo progress (`src/progress.js`, `localStorage`) is untouched and remains device-local; only per-level top scores are shared. See `src/firebase.js`, `src/identity.js`, `src/leaderboard.js` above.
+
+**First-time nickname prompt**: on a player's first level win, `Game.finishWin()` (`src/game.js`) shows `#nicknameOverlay` instead of `#winOverlay` if no identity is cached yet (players can also tap "Skip"). Saving a nickname or dismissing the win overlay's trophy (🏆) button opens `#leaderboardOverlay`, which calls `fetchTop3()`.
+
+**Manual setup required** (cannot be done from code — do this in the Firebase console before the leaderboard will actually work):
+1. Create a Firebase project; enable **Anonymous** sign-in under Authentication.
+2. Create a Firestore database and publish security rules restricting each `leaderboard/{levelNum}/scores/{uid}` doc to being written only by its own uid, with score capped and monotonically non-decreasing (see the plan history / Firestore console for the exact rules text).
+3. Register a Web app in Project settings and paste the generated config object into `src/firebase-config.js`.
+
+Until that setup is done, `firebase-config.js`'s fields are empty, `getFirebaseAuth()`/`getFirebaseDb()` resolve to `null`, and the leaderboard/nickname UI still renders but shows "no scores yet" / silently no-ops submission — the rest of the game is unaffected.
+
+Cross-device sync of solo progress (stars, unlocked levels) is explicitly **not** implemented — only leaderboard scores are shared; treat it as a separate future effort if requested.
+
 ## Not implemented
 
-The README's roadmap also mentions, as lower-priority/"later" items not yet built: a daily streak mechanic and richer (non-synthesized) sound. These weren't specified with enough concrete detail in README.md to implement without inventing the design.
+The README's roadmap also mentions, as lower-priority/"later" items not yet built: a daily streak mechanic and richer (non-synthesized) sound. These weren't specified with enough concrete detail in README.md to implement without inventing the design. Full cross-device account/progress sync (beyond the leaderboard above) is also not implemented.
