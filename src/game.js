@@ -1,10 +1,10 @@
-import { PAL, getLevel, TOTAL_LEVELS } from './levels.js?v=20260703210422-9856a5ee';
-import { recordResult, recordLoss, loadProgress, isLocked, COMEBACK_ASSIST_STREAK } from './progress.js?v=20260703210422-9856a5ee';
-import { loadIdentity, setNickname } from './identity.js?v=20260703210422-9856a5ee';
-import { submitScore } from './leaderboard.js?v=20260703210422-9856a5ee';
-import { syncProgressToCloud } from './progress-sync.js?v=20260703210422-9856a5ee';
-import { showLeaderboardOverlay, hideLeaderboardOverlay } from './leaderboard-ui.js?v=20260703210422-9856a5ee';
-import { loadSoundOn, saveSoundOn } from './sound-pref.js?v=20260703210422-9856a5ee';
+import { PAL, getLevel, TOTAL_LEVELS } from './levels.js?v=20260703212255-e226876d';
+import { recordResult, recordLoss, loadProgress, isLocked, COMEBACK_ASSIST_STREAK } from './progress.js?v=20260703212255-e226876d';
+import { loadIdentity, setNickname } from './identity.js?v=20260703212255-e226876d';
+import { submitScore } from './leaderboard.js?v=20260703212255-e226876d';
+import { syncProgressToCloud } from './progress-sync.js?v=20260703212255-e226876d';
+import { showLeaderboardOverlay, hideLeaderboardOverlay } from './leaderboard-ui.js?v=20260703212255-e226876d';
+import { loadSoundOn, saveSoundOn } from './sound-pref.js?v=20260703212255-e226876d';
 
 function loadBestFor(levelNum) {
   const p = loadProgress();
@@ -49,6 +49,7 @@ export class Game {
 
     this.els = {
       levelTitle: document.getElementById('levelTitle'),
+      levelBestStars: document.getElementById('levelBestStars'),
       targetLabel: document.getElementById('targetLabel'),
       miniBlob: document.getElementById('miniBlob'),
       clearedValue: document.getElementById('clearedValue'),
@@ -149,6 +150,19 @@ export class Game {
     }
   }
 
+  renderBestStars(best) {
+    const el = this.els.levelBestStars;
+    el.innerHTML = '';
+    if (!best || !best.stars) { el.hidden = true; return; }
+    for (let k = 1; k <= 3; k++) {
+      const star = document.createElement('span');
+      star.className = 'level-star' + (k <= best.stars ? ' earned' : '');
+      star.textContent = '★';
+      el.appendChild(star);
+    }
+    el.hidden = false;
+  }
+
   measure() {
     const el = this.boardWrap;
     if (!el) return;
@@ -192,6 +206,7 @@ export class Game {
     this.els.hint.hidden = false;
     const best = loadBestFor(this.levelNum);
     this.assistActive = !!(best && best.losses >= COMEBACK_ASSIST_STREAK);
+    this.renderBestStars(best);
     const blobs = [];
     for (let r = 0; r < this.ROWS; r++) {
       for (let c = 0; c < this.COLS; c++) {
