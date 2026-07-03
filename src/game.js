@@ -1,9 +1,9 @@
-import { PAL, getLevel, TOTAL_LEVELS } from './levels.js?v=20260703182154-d9b24638';
-import { recordResult, loadProgress, isLocked } from './progress.js?v=20260703182154-d9b24638';
-import { loadIdentity, setNickname } from './identity.js?v=20260703182154-d9b24638';
-import { submitScore } from './leaderboard.js?v=20260703182154-d9b24638';
-import { syncProgressToCloud } from './progress-sync.js?v=20260703182154-d9b24638';
-import { showLeaderboardOverlay, hideLeaderboardOverlay } from './leaderboard-ui.js?v=20260703182154-d9b24638';
+import { PAL, getLevel, TOTAL_LEVELS } from './levels.js?v=20260703194343-d3728a72';
+import { recordResult, loadProgress, isLocked } from './progress.js?v=20260703194343-d3728a72';
+import { loadIdentity, setNickname } from './identity.js?v=20260703194343-d3728a72';
+import { submitScore } from './leaderboard.js?v=20260703194343-d3728a72';
+import { syncProgressToCloud } from './progress-sync.js?v=20260703194343-d3728a72';
+import { showLeaderboardOverlay, hideLeaderboardOverlay } from './leaderboard-ui.js?v=20260703194343-d3728a72';
 
 function loadBestFor(levelNum) {
   const p = loadProgress();
@@ -366,10 +366,48 @@ export class Game {
     this.pop(group, e, { spawnSpecialAt: specialType ? i : null, spawnSpecialType: specialType });
   }
 
-  explodeBomb(i, e) {
-    const blast = this.computeBombBlast(i);
-    this.vib([15, 15, 15, 15, 30]);
-    this.pop(blast, e, { blastType: 'bomb' });
+  explodeBomb(i, e) { this.triggerSpecial(i, 'bomb', e); }
+  explodeRocket(i, e) { this.triggerSpecial(i, 'rocket', e); }
+  explodeRainbow(i, e) { this.triggerSpecial(i, 'rainbow', e); }
+
+  // Activates a booster, chain-reacting into any other unactivated booster
+  // caught in its blast (that booster's own blast gets merged in too,
+  // recursively) instead of force-popping it like a normal blob.
+  triggerSpecial(i, type, e) {
+    const { blast, gain, chained } = this.computeChainBlast(i, type);
+    this.vib(chained ? [15, 15, 15, 15, 15, 15, 50] : type === 'rainbow' ? [15, 15, 15, 15, 15, 40] : [15, 15, 15, 15, 30]);
+    this.pop(blast, e, { blastType: type, gain });
+  }
+
+  computeSpecialBlast(i, type) {
+    if (type === 'bomb') return this.computeBombBlast(i);
+    if (type === 'rocket') return this.computeRocketBlast(i);
+    if (type === 'rainbow') return this.computeRainbowBlast(i);
+    return [i];
+  }
+
+  // BFS over boosters reachable via each other's blast radius, starting from
+  // (i, type). Each newly-reached booster contributes its own blast (scored
+  // at its own rate) to the merged total.
+  computeChainBlast(i, type) {
+    const included = new Set();
+    const activated = [];
+    const seen = new Set();
+    const queue = [[i, type]];
+    while (queue.length) {
+      const [idx, t] = queue.shift();
+      if (seen.has(idx)) continue;
+      seen.add(idx);
+      const raw = this.computeSpecialBlast(idx, t);
+      activated.push({ type: t, count: raw.length });
+      raw.forEach(gi => {
+        included.add(gi);
+        const ob = this.state.blobs[gi];
+        if (gi !== idx && ob.special && !seen.has(gi)) queue.push([gi, ob.special]);
+      });
+    }
+    const gain = activated.reduce((sum, a) => sum + a.count * BLAST_RATE[a.type], 0);
+    return { blast: Array.from(included), gain, chained: activated.length > 1 };
   }
 
   computeBombBlast(i) {
@@ -382,14 +420,6 @@ export class Game {
     return blast;
   }
 
-  explodeRocket(i, e) {
-    const blast = this.computeRocketBlast(i);
-    this.vib([15, 15, 15, 15, 30]);
-    this.pop(blast, e, { blastType: 'rocket' });
-  }
-
-  // No chain-reaction handling: any other unactivated special caught in the
-  // line just gets force-popped like a normal blob (matches bomb precedent).
   computeRocketBlast(i) {
     const b = this.state.blobs[i];
     const blast = [];
@@ -398,12 +428,6 @@ export class Game {
       if (b.dir === 'col' ? ob.col === b.col : ob.row === b.row) blast.push(gi);
     });
     return blast;
-  }
-
-  explodeRainbow(i, e) {
-    const blast = this.computeRainbowBlast(i);
-    this.vib([15, 15, 15, 15, 15, 40]);
-    this.pop(blast, e, { blastType: 'rainbow' });
   }
 
   // Targets whichever color currently has the most non-special blobs on the
@@ -445,17 +469,15 @@ export class Game {
 
   findBestMove() {
     const blobs = this.state.blobs;
-    const computeBlast = { bomb: i => this.computeBombBlast(i), rocket: i => this.computeRocketBlast(i), rainbow: i => this.computeRainbowBlast(i) };
     let bestSpecial = null, bestSpecialGain = -1, bestSpecialType = null;
     blobs.forEach((b, i) => {
-      if (!b.special || !computeBlast[b.special]) return;
-      const blast = computeBlast[b.special](i);
-      const gain = blast.length * BLAST_RATE[b.special];
+      if (!b.special) return;
+      const { blast, gain } = this.computeChainBlast(i, b.special);
       if (gain > bestSpecialGain) { bestSpecialGain = gain; bestSpecial = blast; bestSpecialType = b.special; }
     });
     const group = this.bestGroup();
     const groupGain = group ? group.length * group.length * 5 : -1;
-    if (bestSpecial && bestSpecialGain >= groupGain) return { type: bestSpecialType, blast: bestSpecial };
+    if (bestSpecial && bestSpecialGain >= groupGain) return { type: bestSpecialType, blast: bestSpecial, gain: bestSpecialGain };
     if (group) return { type: 'group', group };
     return null;
   }
@@ -475,7 +497,7 @@ export class Game {
       const move = this.findBestMove();
       if (!move) { this.endBonusRound(stars, runId); return; }
       if (move.type !== 'group') {
-        this.pop(move.blast, null, { blastType: move.type });
+        this.pop(move.blast, null, { blastType: move.type, gain: move.gain });
       } else {
         const specialType = this.level.hasBombs ? specialForGroupSize(move.group.length) : null;
         this.pop(move.group, null, { spawnSpecialAt: specialType ? move.group[0] : null, spawnSpecialType: specialType });
@@ -535,7 +557,7 @@ export class Game {
   applyMoveInstant(move) {
     const s = this.state;
     const group = move.type !== 'group' ? move.blast : move.group;
-    const gain = move.type !== 'group' ? group.length * BLAST_RATE[move.type] : group.length * group.length * 5;
+    const gain = move.type !== 'group' ? move.gain : group.length * group.length * 5;
     const specialType = move.type === 'group' && this.level.hasBombs ? specialForGroupSize(group.length) : null;
     const specialIdx = specialType ? group[0] : null;
     group.forEach(gi => { if (gi !== specialIdx) s.blobs[gi].popping = true; });
@@ -625,7 +647,7 @@ export class Game {
     opts = opts || {};
     this.busy = true;
     const n = group.length;
-    const gain = opts.blastType ? n * BLAST_RATE[opts.blastType] : n * n * 5;
+    const gain = opts.gain != null ? opts.gain : opts.blastType ? n * BLAST_RATE[opts.blastType] : n * n * 5;
     const specialIdx = opts.spawnSpecialAt != null ? opts.spawnSpecialAt : null;
     const specialType = opts.spawnSpecialType || null;
     const newParts = [];
