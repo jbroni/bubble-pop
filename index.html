@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="src/style.css?v=20260703210422-9856a5ee">
+<link rel="stylesheet" href="src/style.css?v=20260703212255-e226876d">
 </head>
 <body>
 
@@ -37,7 +37,10 @@
       <button id="backBtn" class="btn-restart" aria-label="Back to levels" type="button">←</button>
       <button id="soundBtnGame" class="btn-restart" aria-label="Toggle sound" type="button">🔊</button>
     </div>
-    <div class="title" id="levelTitle">Level 1</div>
+    <div class="title-wrap">
+      <div class="title" id="levelTitle">Level 1</div>
+      <div class="level-stars" id="levelBestStars" hidden></div>
+    </div>
     <div class="header-group">
       <div class="btn-restart btn-spacer" aria-hidden="true"></div>
       <button id="restartBtn" class="btn-restart" aria-label="Restart level" type="button">↻</button>
@@ -159,6 +162,6 @@
   </div>
 </div>
 
-<script type="module" src="src/main.js?v=20260703210422-9856a5ee"></script>
+<script type="module" src="src/main.js?v=20260703212255-e226876d"></script>
 </body>
 </html>
