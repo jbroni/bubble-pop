@@ -17,6 +17,7 @@ The full 50-level game is implemented as a static, dependency-free web app:
 - `src/firebase-config.js` / `src/firebase.js` — Firebase web config (safe to commit; not a secret) and lazy SDK bootstrap, imported from Google's CDN as ES modules (`https://www.gstatic.com/firebasejs/...`) so no bundler is needed. `getFirebaseAuth()`/`getFirebaseDb()` return `null` until `firebase-config.js` is filled in, so the app degrades gracefully with leaderboard features disabled if Firebase isn't set up.
 - `src/identity.js` — nickname/anonymous-uid management. Caches `{uid, name}` in `localStorage` (`bubblepop.identity`); `ensureSignedIn()` lazily calls Firebase Anonymous Auth (only once a nickname is submitted, never on cold start); `setNickname()` writes the `users/{uid}` Firestore profile doc.
 - `src/leaderboard.js` — `submitScore(levelNum, score)` (transactional compare-and-swap against `leaderboard/{levelNum}/scores/{uid}`, never throws/blocks) and `fetchTop3(levelNum)` (returns `[]` on any failure) for the global top-3-per-level leaderboard.
+- `src/progress-sync.js` — best-effort cloud backup of solo progress, keyed to the same anonymous uid as the leaderboard. `syncProgressToCloud(progress)` fire-and-forget writes the whole local progress object to `progress/{uid}`; `fetchCloudProgress()` reads it back (`null` on any failure/absence). Both no-op until a nickname/identity exists, same gating as `leaderboard.js`.
 
 No `package.json`, build step, or test suite exists — plain HTML/CSS/JS served as static files. Because it uses ES modules, it must be served over HTTP (not opened via `file://`):
 
@@ -51,18 +52,18 @@ Deploy by pushing these static files to GitHub Pages / Netlify / Vercel as-is. T
 
 ## Global leaderboard (Firebase)
 
-Each level has a global top-3 leaderboard, backed by Firebase (Anonymous Auth + Firestore), used purely client-side — the app is still 100% static and deploys to GitHub Pages as-is. Solo progress (`src/progress.js`, `localStorage`) is untouched and remains device-local; only per-level top scores are shared. See `src/firebase.js`, `src/identity.js`, `src/leaderboard.js` above.
+Each level has a global top-3 leaderboard, backed by Firebase (Anonymous Auth + Firestore), used purely client-side — the app is still 100% static and deploys to GitHub Pages as-is. See `src/firebase.js`, `src/identity.js`, `src/leaderboard.js` above.
 
-**First-time nickname prompt**: on a player's first level win, `Game.finishWin()` (`src/game.js`) shows `#nicknameOverlay` instead of `#winOverlay` if no identity is cached yet (players can also tap "Skip"). Saving a nickname or dismissing the win overlay's trophy (🏆) button opens `#leaderboardOverlay`, which calls `fetchTop3()`.
+**First-time nickname prompt**: on a player's first level win, `Game.finishWin()` (`src/game.js`) shows `#nicknameOverlay` instead of `#winOverlay` if no identity is cached yet (players can also tap "Skip"). Saving a nickname or dismissing the win overlay's trophy (🏆) button opens `#leaderboardOverlay`, which calls `fetchTop3()`. `finishWin()` also fires `syncProgressToCloud()` (see `src/progress-sync.js` above) alongside `submitScore()`.
 
-**Manual setup required** (cannot be done from code — do this in the Firebase console before the leaderboard will actually work):
+**Manual setup required** (cannot be done from code — do this in the Firebase console before the leaderboard/progress backup will actually work):
 1. Create a Firebase project; enable **Anonymous** sign-in under Authentication.
-2. Create a Firestore database and publish security rules restricting each `leaderboard/{levelNum}/scores/{uid}` doc to being written only by its own uid, with score capped and monotonically non-decreasing (see the plan history / Firestore console for the exact rules text).
+2. Create a Firestore database and publish security rules restricting each `leaderboard/{levelNum}/scores/{uid}` doc and each `progress/{uid}` doc to being read/written only by its own uid (`request.auth.uid == uid`); leaderboard scores should additionally be capped and monotonically non-decreasing (see the plan history / Firestore console for the exact rules text).
 3. Register a Web app in Project settings and paste the generated config object into `src/firebase-config.js`.
 
 Until that setup is done, `firebase-config.js`'s fields are empty, `getFirebaseAuth()`/`getFirebaseDb()` resolve to `null`, and the leaderboard/nickname UI still renders but shows "no scores yet" / silently no-ops submission — the rest of the game is unaffected.
 
-Cross-device sync of solo progress (stars, unlocked levels) is explicitly **not** implemented — only leaderboard scores are shared; treat it as a separate future effort if requested.
+**Solo progress persistence** (`src/progress.js`, `localStorage`, key `bubblepop.progress`) is the source of truth during play and works fully offline/without Firebase. Once a player has set a nickname, `src/progress-sync.js` best-effort backs it up to Firestore under `progress/{uid}` on every win, and `src/main.js` pulls it back down (merging via `mergeProgress()`, taking the max of every field) on app load if an identity is already cached. This protects against *partial* storage clears or same-device reinstalls where the anonymous Firebase credential survives — it does **not** survive a full "clear site data," which wipes the anonymous credential itself along with `localStorage`, so there is no way to prove you're the same anonymous user afterward. True cross-device/account sync (e.g. a real sign-in) is explicitly not implemented; treat it as a separate future effort if requested.
 
 ## Not implemented
 
