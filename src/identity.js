@@ -1,4 +1,4 @@
-import { getFirebaseAuth, getFirebaseDb } from './firebase.js?v=20260703195312-852873e7';
+import { getFirebaseAuth, getFirebaseDb } from './firebase.js?v=20260703200214-b5366ad8';
 
 const KEY = 'bubblepop.identity';
 

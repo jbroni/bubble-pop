@@ -1,9 +1,10 @@
-import { PAL, getLevel, TOTAL_LEVELS } from './levels.js?v=20260703195312-852873e7';
-import { recordResult, loadProgress, isLocked } from './progress.js?v=20260703195312-852873e7';
-import { loadIdentity, setNickname } from './identity.js?v=20260703195312-852873e7';
-import { submitScore } from './leaderboard.js?v=20260703195312-852873e7';
-import { syncProgressToCloud } from './progress-sync.js?v=20260703195312-852873e7';
-import { showLeaderboardOverlay, hideLeaderboardOverlay } from './leaderboard-ui.js?v=20260703195312-852873e7';
+import { PAL, getLevel, TOTAL_LEVELS } from './levels.js?v=20260703200214-b5366ad8';
+import { recordResult, loadProgress, isLocked } from './progress.js?v=20260703200214-b5366ad8';
+import { loadIdentity, setNickname } from './identity.js?v=20260703200214-b5366ad8';
+import { submitScore } from './leaderboard.js?v=20260703200214-b5366ad8';
+import { syncProgressToCloud } from './progress-sync.js?v=20260703200214-b5366ad8';
+import { showLeaderboardOverlay, hideLeaderboardOverlay } from './leaderboard-ui.js?v=20260703200214-b5366ad8';
+import { loadSoundOn, saveSoundOn } from './sound-pref.js?v=20260703200214-b5366ad8';
 
 function loadBestFor(levelNum) {
   const p = loadProgress();
@@ -39,7 +40,7 @@ export class Game {
     this.busy = false;
     this.bonusRunId = 0;
     this.ctx = null;
-    this.soundOn = true;
+    this.soundOn = loadSoundOn();
 
     this.board = document.getElementById('board');
     this.boardWrap = document.getElementById('boardWrap');
@@ -69,9 +70,12 @@ export class Game {
       nicknameInput: document.getElementById('nicknameInput'),
       nicknameSaveBtn: document.getElementById('nicknameSaveBtn'),
       nicknameSkipBtn: document.getElementById('nicknameSkipBtn'),
+      soundBtn: document.getElementById('soundBtnGame'),
     };
 
     this.els.bonusSkipBtn.onclick = () => this.skipBonusRound();
+    this.els.soundBtn.onclick = () => this.toggleSound();
+    this.updateSoundButtons();
     document.getElementById('backBtn').onclick = () => this.callbacks.onBack && this.callbacks.onBack();
     document.getElementById('restartBtn').onclick = () => this.startLevel();
     document.getElementById('winMapBtn').onclick = () => this.callbacks.onBack && this.callbacks.onBack();
@@ -836,6 +840,20 @@ export class Game {
   }
 
   // ---- audio ----
+  toggleSound() {
+    this.soundOn = !this.soundOn;
+    saveSoundOn(this.soundOn);
+    this.updateSoundButtons();
+  }
+  updateSoundButtons() {
+    const icon = this.soundOn ? '🔊' : '🔇';
+    const label = this.soundOn ? 'Mute sound' : 'Unmute sound';
+    [this.els.soundBtn, document.getElementById('soundBtnMap')].forEach((btn) => {
+      if (!btn) return;
+      btn.textContent = icon;
+      btn.setAttribute('aria-label', label);
+    });
+  }
   ensureAudio() {
     if (!this.ctx) {
       const AC = window.AudioContext || window.webkitAudioContext;

@@ -222,6 +222,7 @@ html, body {
 }
 .btn-restart:active { transform: scale(.9); }
 .btn-spacer { visibility: hidden; }
+.header-group { display: flex; align-items: center; gap: 6px; }
 
 .hud {
   display: flex;
