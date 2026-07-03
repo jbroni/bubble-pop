@@ -4,6 +4,7 @@ import { renderMap } from './levelmap.js';
 import { loadProgress, saveProgress, mergeProgress, isLocked } from './progress.js';
 import { loadIdentity } from './identity.js';
 import { fetchCloudProgress } from './progress-sync.js';
+import { showLeaderboardOverlay } from './leaderboard-ui.js';
 
 const mapScreen = document.getElementById('mapScreen');
 const app = document.getElementById('app');
@@ -14,7 +15,7 @@ let game = null;
 function showMap() {
   mapScreen.hidden = false;
   app.hidden = true;
-  renderMap(mapGrid, playLevel);
+  renderMap(mapGrid, playLevel, showLeaderboardOverlay);
 }
 
 function playLevel(n) {
