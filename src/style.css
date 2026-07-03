@@ -516,6 +516,17 @@ html, body {
   animation: floatToast 1.6s ease forwards;
 }
 
+.map-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  max-width: calc(100% - 32px);
+  white-space: normal;
+  text-align: center;
+  z-index: 20;
+  animation-duration: 3.2s;
+}
+
 .hint {
   text-align: center;
   font-size: 12px;
