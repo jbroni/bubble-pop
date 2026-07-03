@@ -137,8 +137,12 @@ export class Game {
     const boardH = Math.round(bw / ar);
     this.board.style.width = boardW + 'px';
     this.board.style.height = boardH + 'px';
-    this.cellW = boardW / this.COLS;
-    this.cellH = boardH / this.ROWS;
+    // Re-measure the board's actual rendered box rather than trusting boardW/boardH:
+    // the flex layout can shrink .board to fit its padded container, so the requested
+    // size and the real rendered size can differ (e.g. cutting off the last column).
+    const rect = this.board.getBoundingClientRect();
+    this.cellW = rect.width / this.COLS;
+    this.cellH = rect.height / this.ROWS;
     this.blobEls.forEach((blobEl) => {
       blobEl.style.width = this.cellW + 'px';
       blobEl.style.height = this.cellH + 'px';
