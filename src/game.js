@@ -1,9 +1,9 @@
-import { PAL, getLevel, TOTAL_LEVELS } from './levels.js';
-import { recordResult, loadProgress, isLocked } from './progress.js';
-import { loadIdentity, setNickname } from './identity.js';
-import { submitScore } from './leaderboard.js';
-import { syncProgressToCloud } from './progress-sync.js';
-import { showLeaderboardOverlay, hideLeaderboardOverlay } from './leaderboard-ui.js';
+import { PAL, getLevel, TOTAL_LEVELS } from './levels.js?v=20260703175951-375f9a61';
+import { recordResult, loadProgress, isLocked } from './progress.js?v=20260703175951-375f9a61';
+import { loadIdentity, setNickname } from './identity.js?v=20260703175951-375f9a61';
+import { submitScore } from './leaderboard.js?v=20260703175951-375f9a61';
+import { syncProgressToCloud } from './progress-sync.js?v=20260703175951-375f9a61';
+import { showLeaderboardOverlay, hideLeaderboardOverlay } from './leaderboard-ui.js?v=20260703175951-375f9a61';
 
 function loadBestFor(levelNum) {
   const p = loadProgress();
