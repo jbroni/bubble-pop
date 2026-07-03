@@ -9,12 +9,15 @@ function formatScore(n) {
   return String(n);
 }
 
-export function renderMap(container, onSelect) {
+export function renderMap(container, onSelect, onViewScores) {
   const progress = loadProgress();
   container.innerHTML = '';
   for (let n = 1; n <= TOTAL_LEVELS; n++) {
     const locked = isLocked(n, progress);
     const info = progress.levels[n];
+
+    const tile = document.createElement('div');
+    tile.className = 'level-tile';
 
     const btn = document.createElement('button');
     btn.className = 'level-btn' + (locked ? ' locked' : '') + (info ? ' cleared' : '');
@@ -50,6 +53,18 @@ export function renderMap(container, onSelect) {
     }
 
     if (!locked) btn.addEventListener('click', () => onSelect(n));
-    container.appendChild(btn);
+    tile.appendChild(btn);
+
+    if (!locked) {
+      const infoBtn = document.createElement('button');
+      infoBtn.className = 'level-info-btn';
+      infoBtn.type = 'button';
+      infoBtn.textContent = '🏆';
+      infoBtn.setAttribute('aria-label', `View leaderboard for level ${n}`);
+      infoBtn.addEventListener('click', () => onViewScores(n));
+      tile.appendChild(infoBtn);
+    }
+
+    container.appendChild(tile);
   }
 }

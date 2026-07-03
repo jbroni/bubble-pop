@@ -1,8 +1,9 @@
 import { PAL, getLevel, TOTAL_LEVELS } from './levels.js';
 import { recordResult, loadProgress, isLocked } from './progress.js';
 import { loadIdentity, setNickname } from './identity.js';
-import { submitScore, fetchTop3 } from './leaderboard.js';
+import { submitScore } from './leaderboard.js';
 import { syncProgressToCloud } from './progress-sync.js';
+import { showLeaderboardOverlay, hideLeaderboardOverlay } from './leaderboard-ui.js';
 
 function loadBestFor(levelNum) {
   const p = loadProgress();
@@ -64,10 +65,6 @@ export class Game {
       hint: document.getElementById('hint'),
       bonusSkipBtn: document.getElementById('bonusSkipBtn'),
       winLeaderboardBtn: document.getElementById('winLeaderboardBtn'),
-      leaderboardOverlay: document.getElementById('leaderboardOverlay'),
-      leaderboardLevelLabel: document.getElementById('leaderboardLevelLabel'),
-      leaderboardList: document.getElementById('leaderboardList'),
-      leaderboardCloseBtn: document.getElementById('leaderboardCloseBtn'),
       nicknameOverlay: document.getElementById('nicknameOverlay'),
       nicknameInput: document.getElementById('nicknameInput'),
       nicknameSaveBtn: document.getElementById('nicknameSaveBtn'),
@@ -88,8 +85,7 @@ export class Game {
         this.callbacks.onBack && this.callbacks.onBack();
       }
     };
-    this.els.winLeaderboardBtn.onclick = () => this.showLeaderboard();
-    this.els.leaderboardCloseBtn.onclick = () => this.hideLeaderboard();
+    this.els.winLeaderboardBtn.onclick = () => showLeaderboardOverlay(this.levelNum);
     this.els.nicknameSaveBtn.onclick = () => this.saveNickname();
     this.els.nicknameSkipBtn.onclick = () => this.hideNickname();
 
@@ -202,7 +198,7 @@ export class Game {
     };
     this.els.winOverlay.hidden = true;
     this.els.loseOverlay.hidden = true;
-    this.els.leaderboardOverlay.hidden = true;
+    hideLeaderboardOverlay();
     this.els.nicknameOverlay.hidden = true;
     this.rebuildBlobEls();
     this.render();
@@ -616,49 +612,6 @@ export class Game {
     this.els.nicknameOverlay.hidden = true;
     this.showWin();
     submitScore(this.levelNum, this.state.score);
-  }
-
-  showLeaderboard() {
-    this.els.leaderboardLevelLabel.textContent = `Level ${this.levelNum}`;
-    this.els.leaderboardList.innerHTML = '<li class="leaderboard-empty">Loading…</li>';
-    this.els.leaderboardOverlay.hidden = false;
-    const levelNum = this.levelNum;
-    fetchTop3(levelNum).then(top => {
-      if (this.els.leaderboardOverlay.hidden || this.levelNum !== levelNum) return;
-      this.renderLeaderboard(top);
-    });
-  }
-
-  renderLeaderboard(top) {
-    this.els.leaderboardList.innerHTML = '';
-    if (!top.length) {
-      const li = document.createElement('li');
-      li.className = 'leaderboard-empty';
-      li.textContent = 'No scores yet — be the first!';
-      this.els.leaderboardList.appendChild(li);
-      return;
-    }
-    top.forEach((entry, i) => {
-      const li = document.createElement('li');
-      li.className = 'leaderboard-row';
-      const rank = document.createElement('span');
-      rank.className = 'leaderboard-rank';
-      rank.textContent = String(i + 1);
-      const name = document.createElement('span');
-      name.className = 'leaderboard-name';
-      name.textContent = entry.name;
-      const score = document.createElement('span');
-      score.className = 'leaderboard-score';
-      score.textContent = entry.score.toLocaleString();
-      li.appendChild(rank);
-      li.appendChild(name);
-      li.appendChild(score);
-      this.els.leaderboardList.appendChild(li);
-    });
-  }
-
-  hideLeaderboard() {
-    this.els.leaderboardOverlay.hidden = true;
   }
 
   // Bonus-round auto-pops reuse the normal pop()/collapse() animation path,

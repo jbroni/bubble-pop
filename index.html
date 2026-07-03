@@ -84,17 +84,6 @@
     </div>
   </div>
 
-  <div class="overlay" id="leaderboardOverlay" data-screen-label="Leaderboard overlay" hidden>
-    <div class="overlay-card overlay-card-leaderboard">
-      <div class="overlay-title overlay-title-leaderboard">Top scores</div>
-      <div class="overlay-sub" id="leaderboardLevelLabel">Level 1</div>
-      <ol class="leaderboard-list" id="leaderboardList"></ol>
-      <div class="overlay-btn-row">
-        <button class="btn-pill btn-pill-secondary" id="leaderboardCloseBtn" type="button">Close</button>
-      </div>
-    </div>
-  </div>
-
   <div class="overlay" id="nicknameOverlay" data-screen-label="Nickname overlay" hidden>
     <div class="overlay-card overlay-card-nickname">
       <div class="overlay-title overlay-title-nickname">Pick a name</div>
@@ -108,6 +97,19 @@
   </div>
 
 </div>
+
+<div class="overlay" id="leaderboardOverlay" data-screen-label="Leaderboard overlay" hidden>
+  <div class="overlay-card overlay-card-leaderboard">
+    <div class="overlay-title overlay-title-leaderboard">Top scores</div>
+    <div class="overlay-sub" id="leaderboardLevelLabel">Level 1</div>
+    <div class="overlay-sub" id="leaderboardPersonal" hidden></div>
+    <ol class="leaderboard-list" id="leaderboardList"></ol>
+    <div class="overlay-btn-row">
+      <button class="btn-pill btn-pill-secondary" id="leaderboardCloseBtn" type="button">Close</button>
+    </div>
+  </div>
+</div>
+
 <script type="module" src="src/main.js"></script>
 </body>
 </html>

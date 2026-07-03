@@ -101,8 +101,13 @@ html, body {
   gap: 12px;
   padding: 8px 16px calc(20px + env(safe-area-inset-bottom));
 }
-.level-btn {
+.level-tile {
+  position: relative;
   aspect-ratio: 1;
+}
+.level-btn {
+  width: 100%;
+  height: 100%;
   border: 1px solid rgba(255,255,255,.16);
   border-radius: 16px;
   background: rgba(255,255,255,.12);
@@ -143,6 +148,24 @@ html, body {
   letter-spacing: .3px;
 }
 .level-btn.cleared .level-score { color: rgba(255,255,255,.75); }
+.level-info-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0,0,0,.35);
+  color: #fff;
+  font-size: 10px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1;
+}
 
 #app[hidden] { display: none; }
 #app {
