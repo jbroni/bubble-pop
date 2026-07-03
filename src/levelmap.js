@@ -1,5 +1,5 @@
-import { TOTAL_LEVELS } from './levels.js?v=20260703194920-f0f14189';
-import { loadProgress, isLocked, STAR_GATE_SIZE, STAR_GATE_AVG } from './progress.js?v=20260703194920-f0f14189';
+import { TOTAL_LEVELS } from './levels.js?v=20260703195312-852873e7';
+import { loadProgress, isLocked, STAR_GATE_SIZE, STAR_GATE_AVG } from './progress.js?v=20260703195312-852873e7';
 
 function formatScore(n) {
   if (n >= 1000) {
